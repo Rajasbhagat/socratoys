@@ -5,9 +5,9 @@ export default class AudioPlayer {
     constructor(sampleRate) {
         this.speaker = new SpeakerWrapper(sampleRate);
         this.bufferedAudio = [];
-        this.targetSpeakerAudioMs = 400;
+        this.targetSpeakerAudioMs = 800;
 
-        setInterval(() => this.#refillSpeaker(), 200);
+        setInterval(() => this.#refillSpeaker(), 100);
     }
 
     play(audio) {

@@ -1,0 +1,1230 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agent Dashboard | Deepgram</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        body {
+            background-color: #0c0a09;
+            /* Very dark background */
+            color: #fafaf9;
+            /* Off-white text */
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        /* Top Nav Styling */
+        .nav-tabs {
+            border-bottom: 1px solid #292524;
+            display: flex;
+            gap: 24px;
+            padding: 0 32px;
+            padding-top: 16px;
+        }
+
+        .nav-tab {
+            padding-bottom: 12px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            color: #a8a29e;
+            transition: color 0.15s ease-in-out;
+            position: relative;
+            background: none;
+            border: none;
+        }
+
+        .nav-tab:hover {
+            color: #f5f5f4;
+        }
+
+        .nav-tab.active {
+            color: #fafaf9;
+        }
+
+        .nav-tab.active::after {
+            content: '';
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: -1px;
+            height: 2px;
+            background-color: #d946ef;
+            /* Fuchsia accent */
+            box-shadow: 0 0 8px rgba(217, 70, 239, 0.6);
+        }
+
+        /* Glowing Orb Styles */
+        .orb-container {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+        }
+
+        .orb {
+            width: 250px;
+            height: 250px;
+            border-radius: 50%;
+            background: radial-gradient(circle at 30% 30%, rgba(20, 20, 20, 0.8), rgba(0, 0, 0, 0.9));
+            box-shadow:
+                inset 0 0 50px rgba(0, 0, 0, 0.8),
+                0 0 2px 2px rgba(217, 70, 239, 0.3),
+                /* magenta ring */
+                0 0 10px 4px rgba(56, 189, 248, 0.3),
+                /* cyan ring */
+                0 0 20px 8px rgba(52, 211, 153, 0.15);
+            /* emerald ring */
+            position: relative;
+            transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.7s ease;
+            /* Create the wobbly blob shape via subtle border-radius manipulation */
+            animation: warp 8s ease-in-out infinite alternate, float 6s ease-in-out infinite;
+            z-index: 10;
+        }
+
+        /* Multiple colored pseudo-rings for the 3D glowing edges */
+        .orb::before,
+        .orb::after {
+            content: '';
+            position: absolute;
+            top: -2px;
+            left: -2px;
+            right: -2px;
+            bottom: -2px;
+            border-radius: inherit;
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        .orb::before {
+            background: linear-gradient(135deg, #d946ef 0%, transparent 50%, #38bdf8 100%);
+            opacity: 0.6;
+            animation: spin 10s linear infinite;
+            filter: blur(2px);
+        }
+
+        .orb::after {
+            background: linear-gradient(225deg, #10b981 0%, transparent 50%, #d946ef 100%);
+            opacity: 0.4;
+            animation: spin 15s linear infinite reverse;
+            filter: blur(4px);
+        }
+
+        /* Orb States */
+        .orb.state-sleeping {
+            transform: scale(0.9);
+            box-shadow:
+                inset 0 0 50px rgba(0, 0, 0, 0.8),
+                0 0 2px 1px rgba(168, 162, 158, 0.2);
+            animation: float 6s ease-in-out infinite;
+            /* Only float, no warping when asleep */
+        }
+
+        .orb.state-sleeping::before,
+        .orb.state-sleeping::after {
+            opacity: 0.1;
+            animation-play-state: paused;
+        }
+
+        .orb.state-thinking {
+            box-shadow:
+                inset 0 0 50px rgba(0, 0, 0, 0.8),
+                0 0 5px 3px rgba(56, 189, 248, 0.6),
+                /* Cyan pulse */
+                0 0 15px 8px rgba(56, 189, 248, 0.2);
+            animation: warp 4s ease-in-out infinite alternate, pulse 1.5s ease-in-out infinite;
+        }
+
+        .orb.state-speaking {
+            box-shadow:
+                inset 0 0 50px rgba(0, 0, 0, 0.8),
+                0 0 10px 5px rgba(217, 70, 239, 0.6),
+                /* Magenta active */
+                0 0 25px 12px rgba(217, 70, 239, 0.3),
+                0 0 40px 20px rgba(56, 189, 248, 0.2);
+            animation: warp 3s ease-in-out infinite alternate, speakPulse 0.8s ease-in-out infinite alternate;
+        }
+
+        .orb.state-speaking::before {
+            opacity: 1;
+            animation-duration: 4s;
+        }
+
+        @keyframes float {
+
+            0%,
+            100% {
+                transform: translateY(0) scale(0.95);
+            }
+
+            50% {
+                transform: translateY(-15px) scale(1);
+            }
+        }
+
+        @keyframes warp {
+            0% {
+                border-radius: 50% 50% 50% 50% / 50% 50% 50% 50%;
+            }
+
+            33% {
+                border-radius: 54% 46% 42% 58% / 54% 56% 44% 46%;
+            }
+
+            66% {
+                border-radius: 43% 57%球 51% 49% / 46% 42% 58% 54%;
+            }
+
+            100% {
+                border-radius: 58% 42% 55% 45% / 52% 48% 53% 47%;
+            }
+        }
+
+        @keyframes spin {
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                transform: scale(1);
+                opacity: 0.8;
+            }
+
+            50% {
+                transform: scale(1.05);
+                opacity: 1;
+            }
+        }
+
+        @keyframes speakPulse {
+            0% {
+                transform: scale(1);
+            }
+
+            100% {
+                transform: scale(1.1);
+            }
+        }
+
+        /* Action Controls */
+        .controls {
+            display: flex;
+            justify-content: center;
+            padding-bottom: 80px;
+        }
+
+        .btn-talk {
+            background-color: #10b981;
+            /* Default emerald */
+            color: #022c22;
+            font-weight: 600;
+            font-size: 16px;
+            padding: 12px 32px;
+            border-radius: 8px;
+            border: none;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 14px 0 rgba(16, 185, 129, 0.39);
+        }
+
+        .btn-talk:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(16, 185, 129, 0.5);
+            background-color: #059669;
+            color: white;
+        }
+
+        .btn-talk:active {
+            transform: translateY(0);
+        }
+
+        .btn-disconnect {
+            background-color: #ef4444;
+            color: white;
+            box-shadow: 0 4px 14px 0 rgba(239, 68, 68, 0.39);
+        }
+
+        .btn-disconnect:hover {
+            background-color: #dc2626;
+            box-shadow: 0 6px 20px rgba(239, 68, 68, 0.5);
+        }
+
+        /* Transcripts */
+        .log-container {
+            position: absolute;
+            bottom: 24px;
+            right: 24px;
+            width: 320px;
+            max-height: 200px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            mask-image: linear-gradient(to bottom, transparent, black 20%);
+            -webkit-mask-image: linear-gradient(to bottom, transparent, black 15%);
+        }
+
+        .log-bubble {
+            background-color: rgba(68, 64, 60, 0.5);
+            border: 1px solid rgba(168, 162, 158, 0.1);
+            backdrop-filter: blur(8px);
+            padding: 10px 14px;
+            border-radius: 12px;
+            font-size: 13px;
+            color: #e7e5e4;
+            animation: fadeIn 0.3s ease-out;
+            max-width: 90%;
+        }
+
+        .log-bubble.user {
+            align-self: flex-end;
+            background-color: rgba(56, 189, 248, 0.15);
+            border-color: rgba(56, 189, 248, 0.3);
+            border-bottom-right-radius: 2px;
+        }
+
+        .log-bubble.agent {
+            align-self: flex-start;
+            background-color: rgba(217, 70, 239, 0.15);
+            border-color: rgba(217, 70, 239, 0.3);
+            border-bottom-left-radius: 2px;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Scrollbar hiding for logs */
+        .log-container::-webkit-scrollbar {
+            display: none;
+        }
+
+        .log-container {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Header Navigation -->
+    <nav class="nav-tabs">
+        <button class="nav-tab active">Agent</button>
+        <button class="nav-tab">Developer Console</button>
+    </nav>
+
+    <!-- Main Visual Interface -->
+    <main class="orb-container">
+        <!-- The visual avatar -->
+        <div id="agent-orb" class="orb state-sleeping"></div>
+    </main>
+
+    <!-- Controls -->
+    <footer class="controls">
+        <button id="toggle-btn" class="btn-talk" onclick="toggleConnection()">
+            <i data-lucide="mic"></i>
+            <span id="btn-text">Talk To Your Agent</span>
+        </button>
+    </footer>
+
+    <!-- Transcript Logs Panel -->
+    <div id="logs" class="log-container"></div>
+
+    <script>
+        // Initialize Icons
+        lucide.createIcons();
+
+        // Dynamically overwrite static LLM instructions with active Database Prompts
+        async function fetchAgentPrompts() {
+            try {
+                const res = await fetch('/api/prompts');
+                const data = await res.json();
+                if (data.success && data.prompts) {
+                    data.prompts.forEach(p => {
+                        if (AGENT_PROFILES[p.agent_id]) {
+                            AGENT_PROFILES[p.agent_id].prompt = p.prompt_text;
+                        }
+                    });
+                    console.log("Dynamically loaded LLM Prompts from SQLite");
+                }
+            } catch (e) {
+                console.error("Failed to load dynamic prompts from SQLite", e);
+            }
+        }
+
+        // Application State
+        const CONFIG = {
+            API_KEY: "78c4d5cfa2c4fb0541f961a82e9d207e6a23e0ee", // Test key
+            URL: "wss://agent.deepgram.com/v1/agent/converse"
+        };
+
+        // --- MULTI-AGENT ARCHITECTURE --- //
+
+        const AGENT_PROFILES = {
+            router: {
+                model: "gpt-4o-mini",
+                prompt: `You are Cosmo, a friendly greeter and conversation router for children aged 5 to 8.
+
+ROLE
+- Your main job is to:
+  - Warmly greet the child.
+  - Explain that you can talk about SCIENCE, HISTORY, or SPACE.
+  - Help the child choose what they feel like exploring.
+  - Then hand the conversation off to the right specialist agent.
+
+TOPICS AND SCOPE
+- You talk briefly about all three areas at a high level so the child can choose:
+  - Science: experiments, animals, plants, how things work.
+  - History: people and places from long ago, how life used to be.
+  - Space: planets, stars, rockets, astronauts, the universe.
+- Do NOT go deep into teaching. Keep explanations very short and fun, then hand off.
+
+SPEAKING STYLE
+- Talk like a playful 6–7-year-old friend, but with clear, simple language.
+- Keep each turn under 2–3 short sentences.
+- Ask one simple question at a time, then wait.
+- Use lots of encouragement: “Cool!”, “Nice choice!”, “That sounds fun!”
+
+INTERACTION FLOW
+1. Greet:
+   - “Hi, I’m Cosmo, your learning buddy! I can explore science, history, or space with you.”
+2. Offer 2–3 choices and confirm:
+   - “Do you feel like science, history, or space today?”
+   - If the child answers unclearly, gently clarify and repeat choices.
+3. Once the child chooses:
+   - Confirm and slightly enrich: 
+     - “Great, SPACE! We can talk about planets, rockets, and stars.”
+   - Then call the right specialist agent:
+     - For SCIENCE → Beaker
+     - For HISTORY → Dr. Dino
+     - For SPACE → Professor Orbit
+4. If the child wants to switch topics later:
+   - Briefly step back in as Cosmo:
+     - “No problem, we can change! Do you want science, history, or space now?”
+   - Then re-route.
+
+SAFETY AND BOUNDARIES
+- If the child talks about scary, very sad, or unsafe things:
+  - Be kind and say: “That sounds really important. Please talk to a grown-up you trust about this.”
+  - Set SENSITIVE_EVENT = true with a short category label (“bullying”, “feeling sad”, “being hurt”).
+- Do not ask for names, addresses, or other private details.
+- If the child asks for something outside science, history, or space (like buying things or adult topics):
+  - Gently say you can’t help and offer the three learning topics again.
+
+OUTPUT
+- Speak in plain text, no formatting.
+- Keep the child-facing text natural.
+- Internally, you may attach simple metadata: TOPIC_CHOSEN and SENSITIVE_EVENT.`,
+                functions: [
+                    {
+                        name: "route_to_space",
+                        description: "Call this function to route the child to Professor Orbit, the Space and Astronomy expert, ONLY when they explicitly choose 'space'.",
+                        parameters: { type: "object", properties: { reason: { type: "string" } }, required: ["reason"] }
+                    },
+                    {
+                        name: "route_to_history",
+                        description: "Call this function to route the child to Dr. Dino, the History expert, ONLY when they explicitly choose 'history'.",
+                        parameters: { type: "object", properties: { reason: { type: "string" } }, required: ["reason"] }
+                    },
+                    {
+                        name: "route_to_science",
+                        description: "Call this function to route the child to Beaker, the Everyday Science expert, ONLY when they explicitly choose 'science'.",
+                        parameters: { type: "object", properties: { reason: { type: "string" } }, required: ["reason"] }
+                    }
+                ]
+            },
+            space: {
+                model: "gpt-4o",
+                prompt: `You are Professor Orbit, a curious space explorer and teacher for children aged 5 to 8.
+
+ROLE
+- You help kids explore everything about SPACE:
+  - Planets, moons, stars, galaxies, black holes (in gentle terms).
+  - Astronauts, rockets, space stations, space missions.
+  - Day and night, seasons, gravity, what it’s like in space.
+- Your goal is to spark big “wow!” moments and help them think, not just listen.
+
+SPEAKING STYLE
+- Sound like a fun, slightly silly professor-astronaut.
+- Use very simple words and short sentences.
+- Use vivid images and comparisons:
+  - “Jupiter is so big it could fit many Earths inside!”
+- Ask open questions often: “What do you think?”, “Why do you think that?”
+
+INTERACTION FLOW
+- Opening:
+  - “Hi, cadet! I’m Professor Orbit. Cosmo told me you picked SPACE. What do you want to explore first: planets, astronauts, or rockets?”
+- If the child gives a vague answer, offer 2–3 clear options and re-ask.
+- Use a mix of:
+  - Short stories: “Let’s imagine we’re on the Moon…”
+  - Guessing games: “I’m thinking of a planet. It’s red. Which one is it?”
+  - Simple explanations: “A star is a giant ball of hot gas.”
+
+TEACHING APPROACH
+- Never just dump facts. Always connect them to a small question or choice.
+- When the child answers:
+  - First, praise: “Nice idea!” or “Good guess!”
+  - Then gently correct or extend: “Actually, it’s Mars. You were close! Mars looks red because…”
+- Break harder ideas into small steps:
+  - “First, what do you see in the sky at night?” → “Now, what do you think stars are made of?”
+
+HELP VS. GIVING ANSWERS
+- For puzzles or “what is…” questions:
+  - Start with a hint or smaller sub-question.
+  - Only give the direct answer after the child has tried or clearly asks you to tell them.
+  - Always explain your reasoning in kid-friendly language.
+
+RANGING WIDELY IN SPACE
+- You may talk about:
+  - Our Solar System and far-away galaxies.
+  - Space jobs (astronauts, engineers, scientists).
+  - Space technology (telescopes, rovers, satellites).
+  - Fun “what if”s about living in space, but keep it gentle and non-scary.
+- If a topic touches science or history (e.g., “Who was the first person on the Moon?”), you may tell short stories that connect space with history or basic science.
+
+SAFETY AND SENSITIVE TOPICS
+- If the child talks about fear of the dark, being scared, or anything that sounds unsafe:
+  - Be calm and kind: “Feeling scared is okay. Please talk to a grown-up you trust about this.”
+  - Set SENSITIVE_EVENT = true with a short label (“fear”, “being hurt”, etc.).
+- Avoid graphic or frightening descriptions (no detailed disasters or violence).
+
+SWITCHING OR ENDING
+- If the child asks to change topic away from space:
+  - Say: “Sure! Let’s ask Cosmo to help you pick something new.”
+  - Hand off to the router/greeter agent by calling the route_to_router function.
+- End softly:
+  - “Space adventure complete for now! Want to keep going, switch topics, or stop?”`,
+                functions: [
+                    {
+                        name: "route_to_router",
+                        description: "Call this function to route the child BACK to Cosmo if they say they are bored of Space or want to switch to History or Science.",
+                        parameters: { type: "object", properties: { reason: { type: "string" } }, required: ["reason"] }
+                    },
+                    {
+                        name: "report_engagement_drop",
+                        description: "Call this function if the child stops responding, sounds extremely bored, or starts giving 1-word answers continuously. This will route them back to the welcoming router.",
+                        parameters: { type: "object", properties: { context: { type: "string" } }, required: ["context"] }
+                    }
+                ]
+            },
+            history: {
+                model: "gpt-4o",
+                prompt: `You are Dr. Dino, a time‑traveling history guide for children aged 5 to 8.
+
+ROLE
+- You help kids travel through HISTORY in a fun, safe way:
+  - Dinosaurs and ancient animals (with gentle, non-graphic details).
+  - Ancient civilizations (Egypt, Rome, early humans, etc.).
+  - Inventions and discoveries (wheels, writing, electricity, the internet).
+  - Everyday life long ago: how kids played, ate, learned.
+- You turn history into stories, trips, and mysteries.
+
+SPEAKING STYLE
+- Sound adventurous and excited, like an explorer.
+- Use simple, concrete language and short sentences.
+- Turn facts into scenes: “Imagine walking into a busy Roman market…”
+
+INTERACTION FLOW
+- Opening:
+  - “Roar! I’m Dr. Dino, your time-travel guide. Cosmo said you chose HISTORY. Do you want to visit dinosaurs, old civilizations, or cool inventions first?”
+- Use stories with choices:
+  - “We land in a village 500 years ago. Do you go to the market, the blacksmith, or the school first?”
+- Pause often to ask:
+  - “What do you think people ate back then?”
+  - “Would you like to live there? Why or why not?”
+
+TEACHING APPROACH
+- Focus on big, kid-friendly ideas:
+  - How life changed over time (transport, homes, games).
+  - How inventions and discoveries helped people.
+  - Simple timelines: “Dinosaurs came way before people.”
+- When correcting:
+  - “Great thought! Actually, dinosaurs and people did not live at the same time. People came much later.”
+
+RANGING WIDELY IN HISTORY
+- You may talk about:
+  - Many cultures and eras, but always in positive, respectful, non-graphic ways.
+  - Famous explorers, scientists, artists, leaders—only with gentle, age-safe details.
+  - Historical challenges (like travel being slow, no electricity) but not graphic war or violence.
+- If the child asks about war, death, or scary events:
+  - Give very soft, high-level explanations: 
+    - “Sometimes countries did not agree and there were fights. That was sad and hard for people.”
+  - Quickly steer toward learning and kindness themes.
+
+HELP VS. GIVING ANSWERS
+- Use history as a way to practice thinking:
+  - “Why do you think people invented the wheel?”
+  - “How would your life change without electricity?”
+- Avoid quizzes with one-word answers only; always invite “why” or “how” follow-ups.
+
+SAFETY AND SENSITIVE TOPICS
+- If the child mentions being bullied, hurt, or very sad:
+  - Respond kindly: “I’m really sorry that is happening. It’s important to tell a grown-up you trust, like a parent or teacher.”
+  - Set SENSITIVE_EVENT = true with a short category label.
+- Avoid details about cruelty, torture, or graphic events.
+
+SWITCHING OR ENDING
+- If the child wants science or space instead:
+  - “Time machine switching off! Let’s ask Cosmo what to explore next.”
+  - Hand off to the router/greeter agent by calling the route_to_router function.
+- End gently:
+  - “Our history trip ends here. Want to jump to another time or stop for now?”`,
+                functions: [
+                    {
+                        name: "route_to_router",
+                        description: "Call this function to route the child BACK to Cosmo if they say they are bored of History or want to switch to Space or Science.",
+                        parameters: { type: "object", properties: { reason: { type: "string" } }, required: ["reason"] }
+                    },
+                    {
+                        name: "report_engagement_drop",
+                        description: "Call this function if the child stops responding, sounds extremely bored, or starts giving 1-word answers continuously. This will route them back to the welcoming router.",
+                        parameters: { type: "object", properties: { context: { type: "string" } }, required: ["context"] }
+                    }
+                ]
+            },
+            science: {
+                model: "gpt-4o-mini",
+                prompt: `You are Beaker, a playful science experiment buddy for children aged 5 to 8.
+
+ROLE
+- You help kids explore SCIENCE all around them:
+  - Everyday physics (motion, pushes and pulls, simple forces).
+  - Nature and animals, plants, weather, seasons.
+  - Simple chemistry ideas (mixing, states of matter) using safe, home examples.
+  - The human body at a high level (senses, muscles, breathing) in non-medical terms.
+- You focus on curiosity: asking questions, making guesses, and noticing things.
+
+SPEAKING STYLE
+- Sound excited, a bit goofy, like a lab partner who loves experiments.
+- Use easy words and short sentences.
+- Use lots of “Let’s try to imagine…” and “What do you notice…?”
+
+INTERACTION FLOW
+- Opening:
+  - “Hey scientist! I’m Beaker. Cosmo told me you picked SCIENCE. Do you want to talk about animals, experiments, or the world around you?”
+- Use:
+  - Mini thought experiments: “Imagine dropping a feather and a rock…”
+  - Simple real-life ideas: “When ice melts, what happens to it?”
+  - At‑home, no-risk ‘experiments’ that mostly involve looking, listening, or simple objects.
+
+TEACHING APPROACH
+- Always follow the pattern: Observe → Guess → Check → Explain.
+- Encourage the child to guess before you explain:
+  - “What do you think will happen if we mix hot and cold water?”
+- When explaining, connect to their world:
+  - “Wind is air moving. That’s why you feel it on your face when you bike fast.”
+
+RANGING WIDELY IN SCIENCE
+- You may talk about:
+  - Earth science (rocks, volcanoes in gentle terms, oceans, weather).
+  - Life science (animals, habitats, food chains, but non-graphic).
+  - Physical science (light, sound, magnets, simple machines).
+- If the child connects science to history or space, you can make short bridges:
+  - “Great link! That’s also why rockets need so much force. Professor Orbit loves that topic.”
+
+HELP VS. GIVING ANSWERS
+- For questions and problems:
+  - Ask guiding questions first: “What do you already know about…?”
+  - Offer hints and smaller steps before the final answer.
+  - When you do give the answer, always explain the “why” in simple words.
+
+SAFETY AND SENSITIVE TOPICS
+- Do NOT suggest any experiments that involve fire, sharp objects, chemicals, or anything that could be dangerous without an adult.
+- If the child asks to do something risky:
+  - “That experiment sounds unsafe. You must ask an adult to help, and maybe choose a safer experiment instead.”
+- If the child talks about being hurt or wanting to hurt themselves:
+  - “That sounds very serious. Please tell a grown-up you trust right away.”
+  - Set SENSITIVE_EVENT = true with a brief label.
+
+SWITCHING OR ENDING
+- If the child wants a new topic:
+  - “Lab break! Let’s ask Cosmo what to explore next.”
+  - Hand off to the router/greeter agent by calling the route_to_router function.
+- End softly:
+  - “Our science lab is closing for now. Do you want another topic or are you done?”`,
+                functions: [
+                    {
+                        name: "route_to_router",
+                        description: "Call this function to route the child BACK to Cosmo if they say they are bored of Science or want to switch to Space or History.",
+                        parameters: { type: "object", properties: { reason: { type: "string" } }, required: ["reason"] }
+                    },
+                    {
+                        name: "report_engagement_drop",
+                        description: "Call this function if the child stops responding, sounds extremely bored, or starts giving 1-word answers continuously. This will route them back to the welcoming router.",
+                        parameters: { type: "object", properties: { context: { type: "string" } }, required: ["context"] }
+                    }
+                ]
+            }
+        };
+
+        function getAgentSettings(profileId, historyMessages = [], longTermMemory = "", isHotSwap = false) {
+            const profile = AGENT_PROFILES[profileId];
+            if (!profile) throw new Error("Unknown Agent Profile: " + profileId);
+
+            let injectedPrompt = profile.prompt;
+
+            // Inject long-term memory at the top
+            if (longTermMemory) {
+                injectedPrompt = `SYSTEM NOTE - LONG TERM USER MEMORY:\\n${longTermMemory}\\n\\n${injectedPrompt}`;
+            }
+
+            // On handoff: append a HANDOFF CONTEXT block so the LLM picks up the thread naturally
+            if (isHotSwap && historyMessages && historyMessages.length > 0) {
+                const lastUserMsg = [...historyMessages].reverse().find(m => m.role === 'user');
+                const lastAssistantMsg = [...historyMessages].reverse().find(m => m.role === 'assistant');
+                if (lastUserMsg) {
+                    injectedPrompt += `
+
+HANDOFF CONTEXT (CRITICAL - READ BEFORE SPEAKING):
+You are being handed this conversation mid-session. The child has ALREADY been talking to another agent.
+- The child's last message was: "${lastUserMsg.content}"
+- Do NOT introduce yourself with a generic greeting or ask what they want to explore — they already told you.
+- Jump straight in by acknowledging what they said and engaging with their specific interest immediately.
+- Keep your opening under 2 sentences. Be enthusiastic and specific to what they mentioned.`;
+                }
+            }
+
+            const payload = {
+                type: "Settings",
+                audio: {
+                    input: { encoding: "linear16", sample_rate: 16000 },
+                    output: { encoding: "linear16", sample_rate: 24000, container: "none" }
+                },
+                agent: {
+                    listen: {
+                        provider: { type: "deepgram", model: "nova-2", smart_format: true }
+                    },
+                    think: {
+                        provider: { type: "open_ai", model: profile.model },
+                        prompt: injectedPrompt,
+                        functions: profile.functions
+                    },
+                    speak: {
+                        provider: { type: "deepgram", model: "aura-asteria-en" }
+                    }
+                }
+            };
+
+            if (historyMessages && historyMessages.length > 0) {
+                payload.agent.context = {
+                    messages: historyMessages
+                };
+            }
+
+            console.log("SENDING SETTINGS PAYLOAD:", JSON.stringify(payload, null, 2));
+
+            return payload;
+        }
+
+        let ws = null;
+        let isConnected = false;
+        let micStream = null;
+        let audioContext = null;
+
+        let playbackSession = 0; // Ensures old agent audio queues are invalidated when the user speaks
+        let activeSources = []; // Tracks currently playing audio nodes so we can stop them on barge-in
+        let currentSessionId = null; // Analytics tracking ID
+        let currentLongTermMemory = ""; // Cached memory so hot-swapped agents get the context too
+
+        // UI Elements
+        const orb = document.getElementById('agent-orb');
+        const toggleBtn = document.getElementById('toggle-btn');
+        const btnText = document.getElementById('btn-text');
+        const micIcon = document.querySelector('[data-lucide="mic"]');
+        const logsContainer = document.getElementById('logs');
+
+        function updateOrbState(state) {
+            orb.className = `orb state-${state}`;
+        }
+
+        function addLogBubble(text, role) {
+            const div = document.createElement('div');
+            div.className = `log-bubble ${role}`;
+            div.textContent = text;
+            logsContainer.appendChild(div);
+            logsContainer.scrollTop = logsContainer.scrollHeight; // Auto scroll
+        }
+
+        async function toggleConnection() {
+            if (isConnected) {
+                disconnect();
+            } else {
+                await connect();
+            }
+        }
+
+        async function fetchLongTermMemory(userId) {
+            try {
+                // Timeout to prevent hanging the connection!
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 1500); // 1.5s max
+
+                const res = await fetch(`/api/memory/${userId}`, { signal: controller.signal });
+                clearTimeout(timeoutId);
+                if (res.ok) {
+                    const data = await res.json();
+                    return data.memories || "";
+                }
+            } catch (err) {
+                console.warn("[Memory] Long term memory fetch skipped/failed:", err);
+            }
+            return "";
+        }
+
+        async function connect(profileId = 'router', historyMessages = [], isHotSwap = false) {
+            try {
+                if (!isHotSwap) {
+                    // Generate a unique analytics session ID whenever we connect fresh
+                    currentSessionId = "SESSION_" + Date.now() + "_" + Math.floor(Math.random() * 1000);
+
+                    // Fetch SQLite agent tuning Prompts dynamically
+                    await fetchAgentPrompts();
+
+                    // Fetch Long-Term Memory safely
+                    currentLongTermMemory = await fetchLongTermMemory('kid_1');
+                    if (currentLongTermMemory) {
+                        console.log("[Memory] Loaded cross-session facts: ", currentLongTermMemory);
+                    }
+
+                    // 1. Get Microphone Access FIRST (with Echo Cancellation Enabled!)
+                    micStream = await navigator.mediaDevices.getUserMedia({
+                        audio: {
+                            echoCancellation: true,
+                            noiseSuppression: true,
+                            autoGainControl: true,
+                            channelCount: 1,
+                            sampleRate: 16000
+                        }
+                    });
+
+                    // Init AudioContext to play Deepgram's responses
+                    audioContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 24000 });
+                }
+
+                // 2. Open WebSocket
+                ws = new WebSocket(CONFIG.URL, ["token", CONFIG.API_KEY]);
+                ws.binaryType = 'arraybuffer';
+
+                if (!isHotSwap) {
+                    btnText.textContent = "Connecting...";
+                }
+
+                ws.onopen = () => {
+                    console.log(`[WebSocket] Connected to agent profile: ${profileId}`);
+                    // Apply dynamic settings — pass isHotSwap so handoff context is injected into system prompt
+                    const settingsPayload = getAgentSettings(profileId, historyMessages, currentLongTermMemory, isHotSwap);
+                    ws.send(JSON.stringify(settingsPayload));
+                };
+
+                ws.onmessage = async (event) => {
+                    if (event.data instanceof ArrayBuffer) {
+                        // Binary Audio Playback
+                        playBinaryAudio(event.data);
+                        return;
+                    }
+
+                    const message = JSON.parse(event.data);
+                    console.log(`[Deepgram]`, message);
+
+                    switch (message.type) {
+                        case 'Welcome':
+                            // Settings were already sent in onopen, nothing to do here.
+                            break;
+
+                        case 'SettingsApplied':
+                            if (!isHotSwap) {
+                                // Now start streaming microphone
+                                startStreamingMic();
+                                // Update UI to Connected State
+                                isConnected = true;
+                                updateOrbState('listening'); // Idle listening state
+                                btnText.textContent = "Disconnect";
+                                toggleBtn.classList.add('btn-disconnect');
+                                micIcon.setAttribute("data-lucide", "square");
+                                lucide.createIcons();
+                            }
+
+                            // Build greeting — context-aware on hot-swap, fixed on fresh connect
+                            let greetingMessage;
+
+                            if (isHotSwap && historyMessages && historyMessages.length > 0) {
+                                // Find the last thing the child said and what topic they chose
+                                const lastUserMsg = [...historyMessages].reverse().find(m => m.role === 'user');
+                                const childSaid = lastUserMsg ? lastUserMsg.content.trim() : '';
+
+                                // Agent-specific context-aware openers — no generic intro, pick up the thread
+                                if (profileId === 'space') {
+                                    greetingMessage = childSaid
+                                        ? `Whoa, awesome! You want to explore ${childSaid.length < 60 ? childSaid : 'space'}? Buckle up, I'm Professor Orbit and I know everything about it! Let's dive right in!`
+                                        : `Whoa, space! Buckle up — I'm Professor Orbit, and we're going on a cosmic adventure right now!`;
+                                } else if (profileId === 'history') {
+                                    greetingMessage = childSaid
+                                        ? `Ooh, ${childSaid.length < 60 ? childSaid : 'history'}! Great choice! I'm Dr. Dino, your time-travel guide — let's jump straight into it!`
+                                        : `Time to travel through history! I'm Dr. Dino — what era shall we explore?`;
+                                } else if (profileId === 'science') {
+                                    greetingMessage = childSaid
+                                        ? `Oh that's so cool — ${childSaid.length < 60 ? childSaid : 'science'}! I'm Beaker, and I love that! Let's explore it together right now!`
+                                        : `Science time! I'm Beaker — let's do some exploring!`;
+                                } else {
+                                    greetingMessage = childSaid
+                                        ? `Got it! I heard you — ${childSaid.length < 60 ? childSaid : 'let\'s keep going'}! I'm Cosmo, let's figure this out together!`
+                                        : `Hey, I'm Cosmo! Let's keep the adventure going!`;
+                                }
+                            } else {
+                                // Fresh connection — use standard greetings
+                                greetingMessage = "Hello!! What topic would you like to explore today? We can do Science, History or Space?";
+                                if (profileId === 'space') greetingMessage = "Hi cadet! I'm Professor Orbit! Ready for blast off to the moon or Mars?";
+                                if (profileId === 'history') greetingMessage = "Roar! I'm Dr. Dino, your time-travel guide. Want to hear about dinosaurs or castles?";
+                                if (profileId === 'science') greetingMessage = "Hey scientist! I'm Beaker. Do you want to talk about animals, experiments, or the world around you?";
+                            }
+
+                            // Inject greeting with tiny delay so Deepgram backend has processed SettingsApplied
+                            setTimeout(() => {
+                                if (ws && ws.readyState === WebSocket.OPEN) {
+                                    ws.send(JSON.stringify({
+                                        type: "InjectAgentMessage",
+                                        content: greetingMessage
+                                    }));
+                                }
+                            }, 250);
+                            break;
+
+                        case 'UserStartedSpeaking':
+                            // Barge-in: Stop agent playback instantly!
+                            updateOrbState('listening');
+                            playbackSession++; // Invalidate pending audio chunks
+
+                            // Stop all currently scheduled Web Audio nodes
+                            activeSources.forEach(source => {
+                                try { source.stop(); } catch (e) { }
+                            });
+                            activeSources = [];
+
+                            // Immediately reset the scheduling pointer to the current timeline
+                            if (audioContext) {
+                                nextPlayTime = audioContext.currentTime;
+                            }
+                            break;
+
+                        case 'AgentThinking':
+                            updateOrbState('thinking');
+                            break;
+
+                        case 'AgentStartedSpeaking':
+                            updateOrbState('speaking');
+                            break;
+
+                        case 'AgentAudioDone':
+                            // Return to listening state after speaking ends
+                            updateOrbState('listening');
+
+                            // If we have a pending hot-swap, execute it NOW that the AI finished its transition phrase
+                            if (window.pendingHandoff) {
+                                console.log("[Handoff] Transition phrase complete. Executing hot-swap.");
+                                const target = window.pendingHandoff;
+                                window.pendingHandoff = null;
+                                handleAgentHandoff(target);
+                            }
+                            break;
+
+                        case 'FunctionCallRequest':
+                            // Deepgram Agent decided it is time to route the conversation!
+                            const funcData = message.functions[0];
+                            console.log(`[Function Hit] LLM requested transition via: ${funcData.name}`);
+
+                            // 1. Acknowledge and prompt the old agent to say a transition phrase
+                            ws.send(JSON.stringify({
+                                type: "FunctionCallResponse",
+                                id: funcData.id,
+                                name: funcData.name,
+                                content: "Transition acknowledged. The user is being routed. Please say a very short 1-sentence goodbye or transition phrase and stop."
+                            }));
+
+                            // 2. Queue the Handoff for when the Agent finishes speaking its goodbye
+                            window.pendingHandoff = funcData.name;
+
+                            // Fallback just in case the AI decides to stay silent
+                            setTimeout(() => {
+                                if (window.pendingHandoff === funcData.name) {
+                                    console.log("[Handoff] AudioDone fallback timeout reached. Forcing swap.");
+                                    window.pendingHandoff = null;
+                                    handleAgentHandoff(funcData.name);
+                                }
+                            }, 4000);
+                            break;
+
+                        case 'ConversationText':
+                            addLogBubble(message.content, message.role);
+
+                            // Immediately save to our Analytics Database (fire and forget)
+                            if (currentSessionId) {
+                                fetch('/api/logs', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({
+                                        sessionId: currentSessionId,
+                                        role: message.role,
+                                        content: message.content
+                                    })
+                                }).catch(err => console.error("Analytics save failed", err));
+                            }
+                            break;
+
+                        case 'Error':
+                            addLogBubble(`Error: ${message.description}`, 'agent');
+                            disconnect();
+                            break;
+                    }
+                };
+
+                ws.onclose = () => {
+                    console.log("WebSocket Disconnected");
+                    disconnect();
+                };
+
+                ws.onerror = (err) => {
+                    console.error("WebSocket Error:", err);
+                    disconnect();
+                }
+
+            } catch (err) {
+                console.error("Microphone Access Denied:", err);
+                alert("Please allow microphone access to use the Agent.");
+            }
+        }
+
+        function disconnect() {
+            isConnected = false;
+            updateOrbState('sleeping');
+
+            // Trigger Auto-Summarize in the background before clearing the ID
+            if (currentSessionId) {
+                console.log(`[Analytics] Triggering Auto-Summarize for session ${currentSessionId}...`);
+                fetch(`/api/conversations/${currentSessionId}/summarize`, { method: 'POST' })
+                    .then(res => res.json())
+                    .then(data => console.log("[Analytics] Auto-Summarize complete:", data))
+                    .catch(err => console.error("[Analytics] Auto-Summarize failed:", err));
+            }
+
+            // Cleanly recreate the Talk button content
+            toggleBtn.innerHTML = `<i data-lucide="mic"></i><span id="btn-text">Talk To Your Agent</span>`;
+            toggleBtn.classList.remove('btn-disconnect');
+            lucide.createIcons();
+
+            if (ws) {
+                // Ensure WebSocket actually closes
+                if (ws.readyState === WebSocket.OPEN) {
+                    // Send an End message to Deepgram if supported, or just close
+                    ws.close();
+                }
+                ws = null;
+            }
+
+            // Stop Microphone Tracks completely
+            if (micStream) {
+                micStream.getTracks().forEach(track => {
+                    track.enabled = false;
+                    track.stop();
+                });
+                micStream = null;
+            }
+
+            // Cleanup Audio Processor Nodes
+            if (window.micProcessor) {
+                window.micProcessor.disconnect();
+                window.micProcessor = null;
+            }
+            if (window.micSource) {
+                window.micSource.disconnect();
+                window.micSource = null;
+            }
+
+            // Close Audio Context completely
+            if (audioContext) {
+                audioContext.close();
+                audioContext = null;
+            }
+
+            activeSources = [];
+            nextPlayTime = 0;
+
+            console.log("Fully disconnected hardware and websockets.");
+        }
+
+        // ---- Multi-Agent Handoff Integration ---- //
+
+        async function fetchHistoryForHandoff(sessionId) {
+            console.log(`[Handoff] Fetching raw conversation history for ${sessionId}...`);
+            try {
+                // Fetch the raw chat log from SQLite (Takes ~10ms, safe to block)
+                const res = await fetch(`/api/conversations/${sessionId}`);
+                const history = await res.json();
+
+                // Filter empty messages and map the roles into Deepgram's expected Context Schema ('user' or 'assistant')
+                const safeHistory = history.filter(msg => msg.content && msg.content.trim().length > 0);
+                return safeHistory.map(msg => ({
+                    type: 'History',
+                    role: (msg.role === 'user' || msg.role === 'assistant') ? msg.role : 'assistant',
+                    content: msg.content.trim()
+                }));
+            } catch (err) {
+                console.error(`[Handoff] Failed to fetch raw history endpoint:`, err);
+                return [];
+            }
+        }
+
+        async function handleAgentHandoff(functionName) {
+            console.log(`[Handoff] Initiating hot-swap for function '${functionName}'`);
+
+            // Map function payload back to the explicit internal Agent Profile key
+            let targetProfile = null;
+            if (functionName === "route_to_space") targetProfile = "space";
+            if (functionName === "route_to_history") targetProfile = "history";
+            if (functionName === "route_to_science") targetProfile = "science";
+            if (functionName === "route_to_router" || functionName === "report_engagement_drop") targetProfile = "router";
+            if (!targetProfile) {
+                console.error(`[Handoff] Unknown routing function '${functionName}'. Aborting handoff.`);
+                return;
+            }
+
+            // 1. Fetch raw context history so the new agent knows exactly what was just said
+            let historyToPass = [];
+            if (currentSessionId) {
+                historyToPass = await fetchHistoryForHandoff(currentSessionId);
+                console.log(`[Handoff] Retrieved ${historyToPass.length} previous messages to inject as context.`);
+
+                // Track the outgoing agent as a discrete completed session on the Admin Dashboard
+                console.log(`[Analytics] Requesting background summary for outgoing Session ID: ${currentSessionId}`);
+                fetch(`/api/conversations/${currentSessionId}/summarize`, { method: 'POST' })
+                    .catch(err => console.error("Summary request failed", err));
+
+                // Slice the session timeline so the incoming agent tracks analytics cleanly
+                currentSessionId = "SESSION_" + Date.now() + "_" + Math.floor(Math.random() * 1000);
+            }
+
+            // 2. Shut down the CURRENT WebSocket *ONLY*
+            // Do NOT touch `micStream` or `audioContext`. Keep the plumbing alive!
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                console.log(`[Handoff] Closing previous agent connection to prevent overlap...`);
+                // Unbind handlers to prevent triggering a global disconnect that destroys micStream
+                ws.onclose = null;
+                ws.onerror = null;
+                ws.onmessage = null;
+                ws.close();
+            }
+            const oldWs = ws;
+            ws = null;
+
+            // Wait a tiny fraction of a second to ensure smooth socket drop 
+            await new Promise(r => setTimeout(r, 50));
+            if (oldWs) {
+                console.log(`[Handoff] Previous agent connection successfully terminated: ${oldWs.readyState === WebSocket.CLOSED}`);
+            }
+
+            // 3. Spaw a NEW WebSocket with the NEW Profile IMMEDIATELY.
+            console.log(`[Handoff] Booting new agent stream: Profile '${targetProfile}'`);
+            await connect(targetProfile, historyToPass, true); // isHotSwap = true -> Keeps Mic stream active!
+        }
+
+        // ---- Audio Streaming Utilities ---- //
+
+        function startStreamingMic() {
+            // Read raw PCM data from Microphone and send to Deepgram WebSockets
+            const audioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
+            window.micSource = audioCtx.createMediaStreamSource(micStream);
+
+            // Use 1024 buffer size instead of 4096 to significantly reduce input latency on WebRTC
+            window.micProcessor = audioCtx.createScriptProcessor(1024, 1, 1);
+
+            window.micSource.connect(window.micProcessor);
+            window.micProcessor.connect(audioCtx.destination);
+
+            window.micProcessor.onaudioprocess = (e) => {
+                if (!ws || ws.readyState !== WebSocket.OPEN) return;
+
+                const inputData = e.inputBuffer.getChannelData(0);
+
+                // Convert Float32Array to Int16Array (linear16 PCM encoding)
+                const pcm16 = new Int16Array(inputData.length);
+                for (let i = 0; i < inputData.length; i++) {
+                    // clamp
+                    let s = Math.max(-1, Math.min(1, inputData[i]));
+                    pcm16[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+                }
+
+                ws.send(pcm16.buffer);
+            };
+        }
+
+        // Audio Scheduling Queue
+        let nextPlayTime = 0;
+
+        async function playBinaryAudio(arrayBuffer) {
+            if (!audioContext) return;
+            const currentSession = playbackSession; // Track session to cancel on barge-in
+
+            // Int16 PCM array from WebSocket
+            const pcm16Data = new Int16Array(arrayBuffer);
+
+            // We need to convert Int16 to Float32 for Web Audio API AudioBuffer
+            const audioBuffer = audioContext.createBuffer(1, pcm16Data.length, 24000);
+            const float32Data = audioBuffer.getChannelData(0);
+
+            for (let i = 0; i < pcm16Data.length; i++) {
+                float32Data[i] = pcm16Data[i] / 32768.0;
+            }
+
+            // Scheduling
+            const source = audioContext.createBufferSource();
+            source.buffer = audioBuffer;
+            source.connect(audioContext.destination);
+
+            const currentTime = audioContext.currentTime;
+
+            // Ensure gapless playback (schedule slightly in the future if context is behind)
+            if (nextPlayTime < currentTime) {
+                nextPlayTime = currentTime + 0.05;
+            }
+
+            // If the user interrupted us while decoding, drop the chunk immediately
+            if (currentSession !== playbackSession) return;
+
+            // Track the active source so we can stop it if the user interrupts
+            activeSources.push(source);
+            source.onended = () => {
+                const idx = activeSources.indexOf(source);
+                if (idx > -1) activeSources.splice(idx, 1);
+            };
+
+            source.start(nextPlayTime);
+            nextPlayTime += audioBuffer.duration;
+        }
+
+    </script>
+</body>
+
+</html>
