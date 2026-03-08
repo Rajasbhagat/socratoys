@@ -13,9 +13,6 @@
     "dotenv": "^17.3.1",
     "express": "^5.2.1",
     "log-timestamp": "^0.3.0",
-    "mic": "^2.1.2",
-    "playwright": "^1.58.2",
-    "speaker": "^0.5.5",
     "sqlite3": "^5.1.7",
     "ws": "^8.18.0"
   }
