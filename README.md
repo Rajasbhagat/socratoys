@@ -1,35 +1,97 @@
-# voice-agent-nodejs-client
+# 🧸 Socratoys: The Interactive Learning Companion
 
-This is a NodeJS client for interacting with Deepgram's Voice Agent API.
+Socratoys is a voice-driven, multi-agent educational platform designed for children aged 5-10. It combines state-of-the-art voice technology with advanced LLM reasoning to create a companion that nurtures curiosity, teaches new concepts, and provides a safe space for brainstorming and emotional processing.
 
-## Instructions
+---
 
-1. Set environment variables with your Deepgram API key and Voice Agent URL:
+## 🌟 Core Features
 
-    ```
-    export DEEPGRAM_API_KEY=<your-key-here>
-    export VOICE_AGENT_URL=<your-url-here>
-    ```
+- **Voice-First Interface**: A fluid, interactive "orb" interface that reacts to the child's voice in real-time.
+- **Multi-Agent Architecture**: 
+  - **Cosmo (Router)**: The friendly greeter who shares fun facts and guides the child to the right activity.
+  - **Knowledge Explorer**: An enthusiastic teacher that uses "Spiral Exploration" to dive deep into topics.
+  - **Brainstorming Coach**: A gentle Socratic guide that helps children think through situations and feelings without giving direct solutions.
+- **Long-Term Memory**: The system "remembers" what the child likes (e.g., dinosaurs, space) and injects this context into future conversations.
+- **Engagement Analytics**: Real-time tracking of attention spans, thinking patterns, and educational progress.
+- **Admin Dashboard**: A comprehensive view for parents/developers to monitor growth, edit agent prompts, and view unified child profiles.
+
+---
+
+## 🏗️ Architecture & Functional Flow
+
+For a detailed technical breakdown, please refer to our **[ARCHITECTURE.md](./ARCHITECTURE.md)**.
+
+### The Functional Loop
+1. **Connection**: The frontend establishes a persistent WebSocket connection to the **Deepgram Voice Agent API**.
+2. **Greeting**: The **Router Agent** initiates the session by fetching a fun educational fact through a backend function call.
+3. **Intent Recognition**: Based on the child's response, the Router identifies if they want to **learn** or **brainstorm**, then performs a "Hot Swap" to the specialized agent.
+4. **Active Session**: High-fidelity audio is streamed from the microphone to Deepgram, and TTS chunks are streamed back for gapless playback using a custom ring-buffer player.
+5. **Post-Session Analysis**: Once the call ends, the transcript is sent to the **Express Backend**.
+6. **Gemini Processing**: **Google Gemini 2.0 Flash** analyzes the transcript to:
+   - Generate a session summary and engagement score.
+   - Extract "User Facts" (e.g., "Child is interested in volcanoes").
+   - Identify behavioral and thinking patterns (hypothesis count, persistence, etc.).
+7. **Memory Persistence**: Extracted facts are stored in **SQLite** and automatically injected into the system prompt of the next session.
+
+---
+
+## 🛠️ Technology Stack
+
+| Layer | Tool / Service | Purpose |
+| :--- | :--- | :--- |
+| **Voice Processing** | [Deepgram Voice Agent](https://deepgram.com) | Real-time STT, Reasoning (GPT-4o/mini), and TTS |
+| **Intelligence** | [Google Gemini 2.0 Flash](https://ai.google.dev/) | Post-session analytics, summarization, and memory extraction |
+| **Backend** | [Node.js](https://nodejs.org/) & [Express](https://expressjs.com/) | API layer, database management, and service orchestration |
+| **Database** | [SQLite](https://sqlite.org/) | Lightweight, local persistence for logs, prompts, and memory |
+| **Frontend** | Vanilla JS / CSS / HTML | High-performance visual interface and WebSocket management |
+| **Icons** | [Lucide React](https://lucide.dev/) | Visual elements and status indicators |
+
+---
+
+## 🚀 Getting Started
+
+### Prerequisites
+- Node.js (>= 18.0.0)
+- [Deepgram API Key](https://console.deepgram.com/)
+- [Google Gemini API Key](https://aistudio.google.com/)
+
+### Installation
+
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/Rajasbhagat/socratoys.git
+   cd voice-agent-nodejs-client
+   ```
 
 2. Install dependencies:
+   ```bash
+   npm install
+   ```
 
-    ```
-    npm install
-    ```
+3. Setup environment variables:
+   ```bash
+   cp .env.example .env
+   # Edit .env and add your API keys
+   ```
 
-3. Run the app:
+4. Run the project:
+   ```bash
+   npm start
+   ```
 
-    ```
-    node app.js
-    ```
+5. Access the app:
+   - Main App: `http://localhost:3000/index.html`
+   - Admin Tab: `http://localhost:3000/admin.html`
 
-4. Start talking into your mic!
+---
 
-The app includes an example function call where you can ask the system to look-up a customer's information by ID, phone, or email.  The customer details are:
-```
-CUST0042: John Smith, Email: john@example.com, Phone: +15551234567
-```
+## 🔒 Security & Privacy
 
-## Audio Issues?
+- **No Hardcoded Keys**: API keys are managed via environment variables and never exposed in the client-side source code.
+- **Local Persistence**: All conversation logs and child metadata are stored locally in `analytics.db`.
+- **Safety Filters**: Agents are configured with strict safety instructions to encourage talking to trusted adults for sensitive topics.
 
-Make sure your system meets the requirements for the [microphone](https://www.npmjs.com/package/mic#installation) and [playback](https://www.npmjs.com/package/speaker) libraries used by the client.
+---
+
+## 📄 License
+MIT License - see [LICENSE](./LICENSE) for details.
