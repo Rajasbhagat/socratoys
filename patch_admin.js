@@ -48,10 +48,9 @@ const promptView = `    </main>
                         <p class="text-xs text-slate-500 font-mono mt-1">Select an agent to modify its core operational instructions.</p>
                     </div>
                     <select id="agent-select" class="bg-white border text-sm font-semibold text-slate-700 border-slate-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5 shadow-sm" onchange="loadEditorPrompt()">
-                        <option value="router">Cosmo (Router)</option>
-                        <option value="science">Beaker (Science)</option>
-                        <option value="history">Dr. Dino (History)</option>
-                        <option value="space">Prof. Orbit (Space)</option>
+                        <option value="router">Initial Chat (Router)</option>
+                        <option value="knowledge">Knowledge Explorer</option>
+                        <option value="brainstorm">Brainstorming Coach</option>
                     </select>
                 </div>
                 

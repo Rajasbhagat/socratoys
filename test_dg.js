@@ -1,9 +1,24 @@
+/**
+ * Test script for Deepgram Voice Agent API message format compatibility.
+ * Tests various context message formats to verify which ones are accepted.
+ *
+ * Usage: DEEPGRAM_API_KEY=xxx node test_dg.js
+ */
+
+import 'dotenv/config';
 import WebSocket from 'ws';
+
+const API_KEY = process.env.DEEPGRAM_API_KEY;
+
+if (!API_KEY) {
+    console.error('Error: DEEPGRAM_API_KEY environment variable is required');
+    process.exit(1);
+}
 
 function testFormat(formatName, formatArray) {
     return new Promise((resolve) => {
         const ws = new WebSocket('wss://agent.deepgram.com/v1/agent/converse', {
-            headers: { 'Authorization': 'Token 78c4d5cfa2c4fb0541f961a82e9d207e6a23e0ee' }
+            headers: { 'Authorization': `Token ${API_KEY}` }
         });
 
         ws.on('open', () => {

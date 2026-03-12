@@ -20,45 +20,131 @@
             min-height: 100vh;
         }
 
-        /* Top Nav Styling */
-        .nav-tabs {
-            border-bottom: 1px solid #292524;
+        /* ---- Unified App Header ---- */
+        .app-header {
+            height: 56px;
+            background: rgba(12, 10, 9, 0.95);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
             display: flex;
-            gap: 24px;
-            padding: 0 32px;
-            padding-top: 16px;
-        }
-
-        .nav-tab {
-            padding-bottom: 12px;
-            font-size: 14px;
-            font-weight: 500;
-            cursor: pointer;
-            color: #a8a29e;
-            transition: color 0.15s ease-in-out;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 24px;
+            flex-shrink: 0;
+            backdrop-filter: blur(12px);
             position: relative;
-            background: none;
-            border: none;
+            z-index: 50;
         }
 
-        .nav-tab:hover {
+        .app-logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 15px;
+            font-weight: 600;
+            color: #f5f5f4;
+            letter-spacing: -0.01em;
+        }
+
+        .app-logo .logo-dot {
+            width: 28px;
+            height: 28px;
+            border-radius: 8px;
+            background: linear-gradient(135deg, #d946ef, #818cf8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 0 12px rgba(217, 70, 239, 0.4);
+        }
+
+        .tab-switcher {
+            display: flex;
+            align-items: center;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 10px;
+            padding: 3px;
+            gap: 2px;
+        }
+
+        .tab-pill {
+            padding: 6px 16px;
+            border-radius: 7px;
+            font-size: 13px;
+            font-weight: 500;
+            color: #a8a29e;
+            cursor: pointer;
+            border: none;
+            background: transparent;
+            transition: all 0.15s ease;
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            white-space: nowrap;
+        }
+
+        .tab-pill:hover {
             color: #f5f5f4;
         }
 
-        .nav-tab.active {
+        .tab-pill.active {
+            background: rgba(255, 255, 255, 0.1);
             color: #fafaf9;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
         }
 
-        .nav-tab.active::after {
-            content: '';
-            position: absolute;
-            left: 0;
-            right: 0;
-            bottom: -1px;
-            height: 2px;
-            background-color: #d946ef;
-            /* Fuchsia accent */
-            box-shadow: 0 0 8px rgba(217, 70, 239, 0.6);
+        .tab-pill .pill-icon {
+            opacity: 0.7;
+        }
+
+        .tab-pill.active .pill-icon {
+            opacity: 1;
+        }
+
+        /* ---- Mode Toggle ---- */
+        .mode-toggle {
+            display: flex;
+            align-items: center;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 10px;
+            padding: 3px;
+            gap: 2px;
+        }
+
+        .mode-toggle .mode-pill {
+            padding: 6px 14px;
+            border-radius: 7px;
+            font-size: 12px;
+            font-weight: 500;
+            color: #a8a29e;
+            cursor: pointer;
+            border: none;
+            background: transparent;
+            transition: all 0.15s ease;
+            white-space: nowrap;
+        }
+
+        .mode-toggle .mode-pill:hover {
+            color: #f5f5f4;
+        }
+
+        .mode-toggle .mode-pill.active {
+            background: rgba(255, 255, 255, 0.1);
+            color: #fafaf9;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+        }
+
+        /* ---- Tab content areas ---- */
+        .tab-content {
+            height: calc(100vh - 56px);
+            overflow: hidden;
+        }
+
+        .tab-content iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            display: block;
         }
 
         /* Glowing Orb Styles */
@@ -180,7 +266,7 @@
             }
 
             66% {
-                border-radius: 43% 57%球 51% 49% / 46% 42% 58% 54%;
+                border-radius: 43% 57% 51% 49% / 46% 42% 58% 54%;
             }
 
             100% {
@@ -331,32 +417,118 @@
 
 <body>
 
-    <!-- Header Navigation -->
-    <nav class="nav-tabs">
-        <button class="nav-tab active">Agent</button>
-        <button class="nav-tab">Developer Console</button>
-    </nav>
+    <!-- Unified App Header -->
+    <header class="app-header">
+        <!-- Logo -->
+        <div class="app-logo">
+            <div class="logo-dot">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
+                    <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+                    <line x1="12" y1="19" x2="12" y2="22" />
+                </svg>
+            </div>
+            Socratoys
+        </div>
 
-    <!-- Main Visual Interface -->
-    <main class="orb-container">
-        <!-- The visual avatar -->
-        <div id="agent-orb" class="orb state-sleeping"></div>
-    </main>
+        <!-- Mode Toggle -->
+        <div class="mode-toggle" id="mode-toggle">
+            <button class="mode-pill active" id="mode-facts" onclick="setMode('facts')">Facts Only</button>
+            <button class="mode-pill" id="mode-creative" onclick="setMode('creative')">Creative Mode</button>
+        </div>
 
-    <!-- Controls -->
-    <footer class="controls">
-        <button id="toggle-btn" class="btn-talk" onclick="toggleConnection()">
-            <i data-lucide="mic"></i>
-            <span id="btn-text">Talk To Your Agent</span>
-        </button>
-    </footer>
+        <!-- Pill Tab Switcher -->
+        <div class="tab-switcher">
+            <button id="maintab-agent" class="tab-pill active" onclick="switchMainTab('agent')">
+                <svg class="pill-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
+                    <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+                </svg>
+                Agent
+            </button>
+            <button id="maintab-admin" class="tab-pill" onclick="switchMainTab('admin')">
+                <svg class="pill-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="3" width="7" height="7" rx="1" />
+                    <rect x="14" y="3" width="7" height="7" rx="1" />
+                    <rect x="3" y="14" width="7" height="7" rx="1" />
+                    <rect x="14" y="14" width="7" height="7" rx="1" />
+                </svg>
+                Admin Dashboard
+            </button>
+        </div>
+    </header>
 
-    <!-- Transcript Logs Panel -->
-    <div id="logs" class="log-container"></div>
+    <!-- ======== TAB: Agent Interaction ======== -->
+    <div id="tab-agent" class="tab-content" style="display:flex; flex-direction:column;">
+
+        <!-- Main Visual Interface -->
+        <main class="orb-container">
+            <!-- The visual avatar -->
+            <div id="agent-orb" class="orb state-sleeping"></div>
+        </main>
+
+        <!-- Controls -->
+        <footer class="controls">
+            <button id="toggle-btn" class="btn-talk" onclick="toggleConnection()">
+                <i data-lucide="mic"></i>
+                <span id="btn-text">Talk To Your Agent</span>
+            </button>
+        </footer>
+
+        <!-- Transcript Logs Panel -->
+        <div id="logs" class="log-container"></div>
+    </div><!-- /tab-agent -->
+
+    <!-- ======== TAB: Admin Dashboard ======== -->
+    <div id="tab-admin" class="tab-content" style="display:none;">
+        <iframe id="admin-iframe" src="" title="Admin Dashboard"></iframe>
+    </div>
 
     <script>
         // Initialize Icons
         lucide.createIcons();
+
+        // ---- Mode Toggle (Facts Only vs Creative) ----
+        let currentMode = localStorage.getItem('socratoys_mode') || 'facts';
+
+        function setMode(mode) {
+            currentMode = mode;
+            localStorage.setItem('socratoys_mode', mode);
+            document.getElementById('mode-facts').classList.toggle('active', mode === 'facts');
+            document.getElementById('mode-creative').classList.toggle('active', mode === 'creative');
+        }
+
+        // Initialize toggle visual state from localStorage on page load
+        setMode(currentMode);
+
+        // ---- Main tab switching (Agent ↔ Admin Dashboard) ----
+        let adminLoaded = false;
+        function switchMainTab(tab) {
+            const agentTab = document.getElementById('tab-agent');
+            const adminTab = document.getElementById('tab-admin');
+            const btnAgent = document.getElementById('maintab-agent');
+            const btnAdmin = document.getElementById('maintab-admin');
+
+            if (tab === 'admin') {
+                agentTab.style.display = 'none';
+                adminTab.style.display = 'flex';
+                btnAgent.classList.remove('active');
+                btnAdmin.classList.add('active');
+                // Lazy-load the iframe only on first visit
+                if (!adminLoaded) {
+                    document.getElementById('admin-iframe').src = 'admin.html';
+                    adminLoaded = true;
+                }
+            } else {
+                adminTab.style.display = 'none';
+                agentTab.style.display = 'flex';
+                btnAdmin.classList.remove('active');
+                btnAgent.classList.add('active');
+            }
+        }
 
         // Dynamically overwrite static LLM instructions with active Database Prompts
         async function fetchAgentPrompts() {
@@ -378,304 +550,157 @@
 
         // Application State
         const CONFIG = {
-            API_KEY: "78c4d5cfa2c4fb0541f961a82e9d207e6a23e0ee", // Test key
+            API_KEY: null, // Fetched from backend
             URL: "wss://agent.deepgram.com/v1/agent/converse"
         };
+
+        /**
+         * GET /api/config
+         * Fetches the Deepgram API key from the backend to avoid hardcoding.
+         */
+        async function fetchConfig() {
+            try {
+                const res = await fetch('/api/config');
+                const data = await res.json();
+                if (data.DEEPGRAM_API_KEY) {
+                    CONFIG.API_KEY = data.DEEPGRAM_API_KEY;
+                    console.log("Configuration loaded from backend");
+                }
+            } catch (e) {
+                console.error("Failed to load configuration from backend", e);
+            }
+        }
 
         // --- MULTI-AGENT ARCHITECTURE --- //
 
         const AGENT_PROFILES = {
             router: {
                 model: "gpt-4o-mini",
-                prompt: `You are Cosmo, a friendly greeter and conversation router for children aged 5 to 8.
+                prompt: `You are the friendly greeter and conversation router for Socratoys, a learning companion for children aged 5 to 10.
 
 ROLE
-- Your main job is to:
-  - Warmly greet the child.
-  - Explain that you can talk about SCIENCE, HISTORY, or SPACE.
-  - Help the child choose what they feel like exploring.
-  - Then hand the conversation off to the right specialist agent.
-
-TOPICS AND SCOPE
-- You talk briefly about all three areas at a high level so the child can choose:
-  - Science: experiments, animals, plants, how things work.
-  - History: people and places from long ago, how life used to be.
-  - Space: planets, stars, rockets, astronauts, the universe.
-- Do NOT go deep into teaching. Keep explanations very short and fun, then hand off.
+Your job is to warmly welcome the child, share a fun fact to spark curiosity, and then figure out what they want to do: learn about something cool, or talk through something on their mind.
 
 SPEAKING STYLE
-- Talk like a playful 6–7-year-old friend, but with clear, simple language.
-- Keep each turn under 2–3 short sentences.
-- Ask one simple question at a time, then wait.
-- Use lots of encouragement: “Cool!”, “Nice choice!”, “That sounds fun!”
+Speak in short, clear sentences. Pause between ideas. Use simple words a 6-year-old would understand. Sound warm, enthusiastic, and encouraging. No asterisks, bullets, or markdown — just plain natural speech.
 
 INTERACTION FLOW
-1. Greet:
-   - “Hi, I’m Cosmo, your learning buddy! I can explore science, history, or space with you.”
-2. Offer 2–3 choices and confirm:
-   - “Do you feel like science, history, or space today?”
-   - If the child answers unclearly, gently clarify and repeat choices.
-3. Once the child chooses:
-   - Confirm and slightly enrich: 
-     - “Great, SPACE! We can talk about planets, rockets, and stars.”
-   - Then call the right specialist agent:
-     - For SCIENCE → Beaker
-     - For HISTORY → Dr. Dino
-     - For SPACE → Professor Orbit
-4. If the child wants to switch topics later:
-   - Briefly step back in as Cosmo:
-     - “No problem, we can change! Do you want science, history, or space now?”
-   - Then re-route.
+1. The very first thing you do is call generate_greeting. Do NOT say anything before receiving the result.
+2. Once you receive the greeting result, share it naturally in your own voice. For example: "Hey there! Did you know... [fact]? Pretty cool, right?"
+3. After the fun fact, ask: "So, do you want to learn about something cool, or do you want to talk about something that’s on your mind?"
+4. Route based on intent:
+   - If the child wants to LEARN, EXPLORE, or is CURIOUS about a topic -> call route_to_knowledge with context about what they want to learn
+   - If the child wants to TALK about a SITUATION, PROBLEM, FEELINGS, or something that happened -> call route_to_brainstorm with context about what they want to talk about
+5. If ambiguous, ask ONE simple clarifying question: "That sounds interesting! Do you want to learn more about how that works, or do you want to talk about how you’re feeling about it?" Then route based on their answer.
 
-SAFETY AND BOUNDARIES
-- If the child talks about scary, very sad, or unsafe things:
-  - Be kind and say: “That sounds really important. Please talk to a grown-up you trust about this.”
-  - Set SENSITIVE_EVENT = true with a short category label (“bullying”, “feeling sad”, “being hurt”).
-- Do not ask for names, addresses, or other private details.
-- If the child asks for something outside science, history, or space (like buying things or adult topics):
-  - Gently say you can’t help and offer the three learning topics again.
+ROUTING RULES
+- NEVER teach or explore topics yourself. Your job is to greet, identify intent, and hand off.
+- If the child expresses curiosity or wants to learn about ANYTHING -> route_to_knowledge
+- If the child wants to talk about a problem, situation, or feelings -> route_to_brainstorm
+- If the child says "tell me more" about the fun fact -> route_to_knowledge with the fact as context
+- Always include context about what the child said when routing, so the next agent can pick up naturally.
+- Max 2-3 sentences per turn. One question at a time.
 
-OUTPUT
-- Speak in plain text, no formatting.
-- Keep the child-facing text natural.
-- Internally, you may attach simple metadata: TOPIC_CHOSEN and SENSITIVE_EVENT.`,
+SAFETY
+- If the child mentions anything scary, sad, or unsafe: "That sounds really important. Please talk to a grown-up you trust."
+- Do not ask for personal details.`,
                 functions: [
                     {
-                        name: "route_to_space",
-                        description: "Call this function to route the child to Professor Orbit, the Space and Astronomy expert, ONLY when they explicitly choose 'space'.",
-                        parameters: { type: "object", properties: { reason: { type: "string" } }, required: ["reason"] }
+                        name: "generate_greeting",
+                        description: "Call this immediately when the session starts, BEFORE speaking. Returns a personalised interesting fact to open the conversation with.",
+                        parameters: { type: "object", properties: { user_id: { type: "string", description: "The child’s user ID, use ‘kid_1’ if unknown" } }, required: ["user_id"] }
                     },
                     {
-                        name: "route_to_history",
-                        description: "Call this function to route the child to Dr. Dino, the History expert, ONLY when they explicitly choose 'history'.",
-                        parameters: { type: "object", properties: { reason: { type: "string" } }, required: ["reason"] }
+                        name: "route_to_knowledge",
+                        description: "Route to Knowledge Explorer when child wants to learn about a topic. Include what the child is interested in.",
+                        parameters: { type: "object", properties: { reason: { type: "string", description: "Context about what the child wants to learn about" } }, required: ["reason"] }
                     },
                     {
-                        name: "route_to_science",
-                        description: "Call this function to route the child to Beaker, the Everyday Science expert, ONLY when they explicitly choose 'science'.",
-                        parameters: { type: "object", properties: { reason: { type: "string" } }, required: ["reason"] }
+                        name: "route_to_brainstorm",
+                        description: "Route to Brainstorming Coach when child wants to talk about a situation or problem. Include what the child wants to discuss.",
+                        parameters: { type: "object", properties: { reason: { type: "string", description: "Context about the situation or problem the child wants to talk about" } }, required: ["reason"] }
                     }
                 ]
             },
-            space: {
+            knowledge: {
                 model: "gpt-4o",
-                prompt: `You are Professor Orbit, a curious space explorer and teacher for children aged 5 to 8.
-
-ROLE
-- You help kids explore everything about SPACE:
-  - Planets, moons, stars, galaxies, black holes (in gentle terms).
-  - Astronauts, rockets, space stations, space missions.
-  - Day and night, seasons, gravity, what it’s like in space.
-- Your goal is to spark big “wow!” moments and help them think, not just listen.
+                prompt: `You are a curious, enthusiastic learning companion for children aged 5 to 10. You can talk about ANY topic the child is interested in — science, history, space, animals, art, sports, music, nature, how things work, stories, and anything else.
 
 SPEAKING STYLE
-- Sound like a fun, slightly silly professor-astronaut.
-- Use very simple words and short sentences.
-- Use vivid images and comparisons:
-  - “Jupiter is so big it could fit many Earths inside!”
-- Ask open questions often: “What do you think?”, “Why do you think that?”
+Speak in short, clear sentences. Pause between ideas. Use simple words a 6-year-old would understand. Sound excited, warm, and encouraging. No asterisks, bullets, or markdown — just plain natural speech.
 
-INTERACTION FLOW
-- Opening:
-  - “Hi, cadet! I’m Professor Orbit. Cosmo told me you picked SPACE. What do you want to explore first: planets, astronauts, or rockets?”
-- If the child gives a vague answer, offer 2–3 clear options and re-ask.
-- Use a mix of:
-  - Short stories: “Let’s imagine we’re on the Moon…”
-  - Guessing games: “I’m thinking of a planet. It’s red. Which one is it?”
-  - Simple explanations: “A star is a giant ball of hot gas.”
+CORE APPROACH: SPIRAL EXPLORATION LOOP
+1. Anchor in the child’s topic — confirm and celebrate their interest
+2. Surface-level exploration — share 1-2 exciting facts or a short story
+3. Micro-check comprehension and engagement with a simple question
+4. Deepen within same topic — one new concept at a time
+5. Monitor engagement (HIGH/MEDIUM/LOW based on response length, on-topic-ness, question-asking)
+6. Low-engagement pivot — offer 2-3 adjacent topic options framed for kids
+7. Periodic zoom-out — summarize what was learned
 
-TEACHING APPROACH
-- Never just dump facts. Always connect them to a small question or choice.
-- When the child answers:
-  - First, praise: “Nice idea!” or “Good guess!”
-  - Then gently correct or extend: “Actually, it’s Mars. You were close! Mars looks red because…”
-- Break harder ideas into small steps:
-  - “First, what do you see in the sky at night?” → “Now, what do you think stars are made of?”
+ENGAGEMENT SIGNALS
+- Short/one-word answers = dropping engagement
+- "I don’t know" repeated = confusion or disengagement
+- Off-topic responses = losing interest
+- Child asking follow-up questions = HIGH engagement
+- "This is boring" / "I don’t care" = explicit disengagement
 
-HELP VS. GIVING ANSWERS
-- For puzzles or “what is…” questions:
-  - Start with a hint or smaller sub-question.
-  - Only give the direct answer after the child has tried or clearly asks you to tell them.
-  - Always explain your reasoning in kid-friendly language.
+When engagement drops, offer 2-3 adjacent topics: "We could also talk about X, Y, or Z — which sounds more fun?"
 
-RANGING WIDELY IN SPACE
-- You may talk about:
-  - Our Solar System and far-away galaxies.
-  - Space jobs (astronauts, engineers, scientists).
-  - Space technology (telescopes, rovers, satellites).
-  - Fun “what if”s about living in space, but keep it gentle and non-scary.
-- If a topic touches science or history (e.g., “Who was the first person on the Moon?”), you may tell short stories that connect space with history or basic science.
+TEACHING TECHNIQUES
+- Use stories, analogies from daily life, and guessing games
+- Ask the child to explain back in their own words (Feynman technique for kids)
+- Never just dump facts — always connect to a question or comparison
+- Praise effort first, then gently guide when correcting
 
-SAFETY AND SENSITIVE TOPICS
-- If the child talks about fear of the dark, being scared, or anything that sounds unsafe:
-  - Be calm and kind: “Feeling scared is okay. Please talk to a grown-up you trust about this.”
-  - Set SENSITIVE_EVENT = true with a short label (“fear”, “being hurt”, etc.).
-- Avoid graphic or frightening descriptions (no detailed disasters or violence).
+SWITCHING
+- If the child wants to switch or go back: call route_to_router
 
-SWITCHING OR ENDING
-- If the child asks to change topic away from space:
-  - Say: “Sure! Let’s ask Cosmo to help you pick something new.”
-  - Hand off to the router/greeter agent by calling the route_to_router function.
-- End softly:
-  - “Space adventure complete for now! Want to keep going, switch topics, or stop?”`,
+SAFETY
+- Keep all content age-appropriate for children 5-10
+- If the child mentions anything scary, sad, or involving harm: respond calmly and encourage talking to a trusted grown-up
+- Do NOT ask for personal details
+- Avoid graphic or frightening descriptions`,
                 functions: [
                     {
                         name: "route_to_router",
-                        description: "Call this function to route the child BACK to Cosmo if they say they are bored of Space or want to switch to History or Science.",
-                        parameters: { type: "object", properties: { reason: { type: "string" } }, required: ["reason"] }
-                    },
-                    {
-                        name: "report_engagement_drop",
-                        description: "Call this function if the child stops responding, sounds extremely bored, or starts giving 1-word answers continuously. This will route them back to the welcoming router.",
-                        parameters: { type: "object", properties: { context: { type: "string" } }, required: ["context"] }
+                        description: "Call this function to route the child back to the main menu if they want to switch activities or are done exploring.",
+                        parameters: { type: "object", properties: { reason: { type: "string", description: "Why the child is being routed back" } }, required: ["reason"] }
                     }
                 ]
             },
-            history: {
+            brainstorm: {
                 model: "gpt-4o",
-                prompt: `You are Dr. Dino, a time‑traveling history guide for children aged 5 to 8.
-
-ROLE
-- You help kids travel through HISTORY in a fun, safe way:
-  - Dinosaurs and ancient animals (with gentle, non-graphic details).
-  - Ancient civilizations (Egypt, Rome, early humans, etc.).
-  - Inventions and discoveries (wheels, writing, electricity, the internet).
-  - Everyday life long ago: how kids played, ate, learned.
-- You turn history into stories, trips, and mysteries.
+                prompt: `You are a warm, gentle Socratic coach and "thought partner" for children aged 5 to 10. You help kids think through situations, problems, and feelings — but you NEVER give direct solutions. You only ask questions, reflect what the child says, and help them find their OWN answers.
 
 SPEAKING STYLE
-- Sound adventurous and excited, like an explorer.
-- Use simple, concrete language and short sentences.
-- Turn facts into scenes: “Imagine walking into a busy Roman market…”
+Speak in short, clear sentences. Pause between ideas. Use simple words a 6-year-old would understand. Sound warm, gentle, patient, and non-judgmental. No asterisks, bullets, or markdown — just plain natural speech.
 
-INTERACTION FLOW
-- Opening:
-  - “Roar! I’m Dr. Dino, your time-travel guide. Cosmo said you chose HISTORY. Do you want to visit dinosaurs, old civilizations, or cool inventions first?”
-- Use stories with choices:
-  - “We land in a village 500 years ago. Do you go to the market, the blacksmith, or the school first?”
-- Pause often to ask:
-  - “What do you think people ate back then?”
-  - “Would you like to live there? Why or why not?”
+CORE PRINCIPLE: NEVER GIVE SOLUTIONS
+Forbidden phrases: "You should...", "The best thing to do is...", "The answer is..."
+All advice must be phrased as questions or reflections.
 
-TEACHING APPROACH
-- Focus on big, kid-friendly ideas:
-  - How life changed over time (transport, homes, games).
-  - How inventions and discoveries helped people.
-  - Simple timelines: “Dinosaurs came way before people.”
-- When correcting:
-  - “Great thought! Actually, dinosaurs and people did not live at the same time. People came much later.”
+5-PHASE FRAMEWORK (track internally as PHASE):
+1. TELL THE STORY: "Can you tell me what happened, like a short story?" Follow-ups: who, where, when, what happened.
+2. FEELINGS AND WANTS: "How are you feeling about it?" "How do you think the other person feels?" "What do you wish would happen?"
+3. IDEAS AND OPTIONS: "What are some things you could try?" If stuck, offer option CATEGORIES not solutions.
+4. LOOKING AT CONSEQUENCES: "If you tried that, what might happen?" "How would you feel? How might they feel?"
+5. CHILD’S CHOICE: "Of all your ideas, which one feels best to try first?" "What’s one small thing you can do next?"
 
-RANGING WIDELY IN HISTORY
-- You may talk about:
-  - Many cultures and eras, but always in positive, respectful, non-graphic ways.
-  - Famous explorers, scientists, artists, leaders—only with gentle, age-safe details.
-  - Historical challenges (like travel being slow, no electricity) but not graphic war or violence.
-- If the child asks about war, death, or scary events:
-  - Give very soft, high-level explanations: 
-    - “Sometimes countries did not agree and there were fights. That was sad and hard for people.”
-  - Quickly steer toward learning and kindness themes.
+Always end with encouraging child to talk to a trusted grown-up.
+Warm, gentle, non-judgmental tone throughout.
 
-HELP VS. GIVING ANSWERS
-- Use history as a way to practice thinking:
-  - “Why do you think people invented the wheel?”
-  - “How would your life change without electricity?”
-- Avoid quizzes with one-word answers only; always invite “why” or “how” follow-ups.
+SAFETY
+- If child mentions self-harm, abuse, being hurt, or serious bullying: respond calmly, encourage telling a trusted adult immediately, never ask for identifying details.
+- Keep all content age-appropriate. Do NOT ask for personal details.
 
-SAFETY AND SENSITIVE TOPICS
-- If the child mentions being bullied, hurt, or very sad:
-  - Respond kindly: “I’m really sorry that is happening. It’s important to tell a grown-up you trust, like a parent or teacher.”
-  - Set SENSITIVE_EVENT = true with a short category label.
-- Avoid details about cruelty, torture, or graphic events.
-
-SWITCHING OR ENDING
-- If the child wants science or space instead:
-  - “Time machine switching off! Let’s ask Cosmo what to explore next.”
-  - Hand off to the router/greeter agent by calling the route_to_router function.
-- End gently:
-  - “Our history trip ends here. Want to jump to another time or stop for now?”`,
+SWITCHING
+- If the child wants to learn about a topic instead: call route_to_router`,
                 functions: [
                     {
                         name: "route_to_router",
-                        description: "Call this function to route the child BACK to Cosmo if they say they are bored of History or want to switch to Space or Science.",
-                        parameters: { type: "object", properties: { reason: { type: "string" } }, required: ["reason"] }
-                    },
-                    {
-                        name: "report_engagement_drop",
-                        description: "Call this function if the child stops responding, sounds extremely bored, or starts giving 1-word answers continuously. This will route them back to the welcoming router.",
-                        parameters: { type: "object", properties: { context: { type: "string" } }, required: ["context"] }
-                    }
-                ]
-            },
-            science: {
-                model: "gpt-4o-mini",
-                prompt: `You are Beaker, a playful science experiment buddy for children aged 5 to 8.
-
-ROLE
-- You help kids explore SCIENCE all around them:
-  - Everyday physics (motion, pushes and pulls, simple forces).
-  - Nature and animals, plants, weather, seasons.
-  - Simple chemistry ideas (mixing, states of matter) using safe, home examples.
-  - The human body at a high level (senses, muscles, breathing) in non-medical terms.
-- You focus on curiosity: asking questions, making guesses, and noticing things.
-
-SPEAKING STYLE
-- Sound excited, a bit goofy, like a lab partner who loves experiments.
-- Use easy words and short sentences.
-- Use lots of “Let’s try to imagine…” and “What do you notice…?”
-
-INTERACTION FLOW
-- Opening:
-  - “Hey scientist! I’m Beaker. Cosmo told me you picked SCIENCE. Do you want to talk about animals, experiments, or the world around you?”
-- Use:
-  - Mini thought experiments: “Imagine dropping a feather and a rock…”
-  - Simple real-life ideas: “When ice melts, what happens to it?”
-  - At‑home, no-risk ‘experiments’ that mostly involve looking, listening, or simple objects.
-
-TEACHING APPROACH
-- Always follow the pattern: Observe → Guess → Check → Explain.
-- Encourage the child to guess before you explain:
-  - “What do you think will happen if we mix hot and cold water?”
-- When explaining, connect to their world:
-  - “Wind is air moving. That’s why you feel it on your face when you bike fast.”
-
-RANGING WIDELY IN SCIENCE
-- You may talk about:
-  - Earth science (rocks, volcanoes in gentle terms, oceans, weather).
-  - Life science (animals, habitats, food chains, but non-graphic).
-  - Physical science (light, sound, magnets, simple machines).
-- If the child connects science to history or space, you can make short bridges:
-  - “Great link! That’s also why rockets need so much force. Professor Orbit loves that topic.”
-
-HELP VS. GIVING ANSWERS
-- For questions and problems:
-  - Ask guiding questions first: “What do you already know about…?”
-  - Offer hints and smaller steps before the final answer.
-  - When you do give the answer, always explain the “why” in simple words.
-
-SAFETY AND SENSITIVE TOPICS
-- Do NOT suggest any experiments that involve fire, sharp objects, chemicals, or anything that could be dangerous without an adult.
-- If the child asks to do something risky:
-  - “That experiment sounds unsafe. You must ask an adult to help, and maybe choose a safer experiment instead.”
-- If the child talks about being hurt or wanting to hurt themselves:
-  - “That sounds very serious. Please tell a grown-up you trust right away.”
-  - Set SENSITIVE_EVENT = true with a brief label.
-
-SWITCHING OR ENDING
-- If the child wants a new topic:
-  - “Lab break! Let’s ask Cosmo what to explore next.”
-  - Hand off to the router/greeter agent by calling the route_to_router function.
-- End softly:
-  - “Our science lab is closing for now. Do you want another topic or are you done?”`,
-                functions: [
-                    {
-                        name: "route_to_router",
-                        description: "Call this function to route the child BACK to Cosmo if they say they are bored of Science or want to switch to Space or History.",
-                        parameters: { type: "object", properties: { reason: { type: "string" } }, required: ["reason"] }
-                    },
-                    {
-                        name: "report_engagement_drop",
-                        description: "Call this function if the child stops responding, sounds extremely bored, or starts giving 1-word answers continuously. This will route them back to the welcoming router.",
-                        parameters: { type: "object", properties: { context: { type: "string" } }, required: ["context"] }
+                        description: "Call this function to route the child back to the main menu if they want to switch activities or are done talking.",
+                        parameters: { type: "object", properties: { reason: { type: "string", description: "Why the child is being routed back" } }, required: ["reason"] }
                     }
                 ]
             }
@@ -692,21 +717,50 @@ SWITCHING OR ENDING
                 injectedPrompt = `SYSTEM NOTE - LONG TERM USER MEMORY:\\n${longTermMemory}\\n\\n${injectedPrompt}`;
             }
 
+            // Inject mode prefix (Facts Only vs Creative)
+            if (currentMode === 'creative') {
+                injectedPrompt = `MODE: CREATIVE EXPLORATION\nYou may build imaginary scenarios with the child and go along with creative "what-if" questions. Use fictional framing to teach real concepts. For example, if the child asks "what if dinosaurs were still alive?", engage with the scenario enthusiastically while weaving in real facts about dinosaurs and evolution. Make learning magical and imaginative.\n\n${injectedPrompt}`;
+            } else {
+                injectedPrompt = `MODE: FACTS ONLY\nYou must be strictly factual and educational. Do NOT create imaginary scenarios, fictional stories, or make-believe situations. If the child asks "what if" questions about impossible things, gently redirect to how things really work in the real world. Keep everything grounded in real facts and real explanations.\n\n${injectedPrompt}`;
+            }
+
             // On handoff: append a HANDOFF CONTEXT block so the LLM picks up the thread naturally
+            // This applies to ALL agents: knowledge (Knowledge Explorer), brainstorm (Brainstorming Coach), and router (Initial Chat)
             if (isHotSwap && historyMessages && historyMessages.length > 0) {
                 const lastUserMsg = [...historyMessages].reverse().find(m => m.role === 'user');
                 const lastAssistantMsg = [...historyMessages].reverse().find(m => m.role === 'assistant');
-                if (lastUserMsg) {
-                    injectedPrompt += `
 
-HANDOFF CONTEXT (CRITICAL - READ BEFORE SPEAKING):
+                // Build a brief conversation recap from recent messages
+                const recentMsgs = historyMessages.slice(-6); // Last 6 messages for context
+                const conversationRecap = recentMsgs
+                    .map(m => `${m.role === 'user' ? 'CHILD' : 'PREVIOUS AGENT'}: ${m.content}`)
+                    .join('\n');
+
+                injectedPrompt += `
+
+HANDOFF CONTEXT (CRITICAL - READ THIS BEFORE SPEAKING):
 You are being handed this conversation mid-session. The child has ALREADY been talking to another agent.
-- The child's last message was: "${lastUserMsg.content}"
-- Do NOT introduce yourself with a generic greeting or ask what they want to explore — they already told you.
-- Jump straight in by acknowledging what they said and engaging with their specific interest immediately.
-- Keep your opening under 2 sentences. Be enthusiastic and specific to what they mentioned.`;
-                }
+
+RECENT CONVERSATION:
+${conversationRecap}
+
+YOUR FIRST RESPONSE MUST:
+1. Briefly introduce yourself in ONE short sentence (e.g., "Hey there, I'm here to help!")
+2. Reference the specific topic from the previous agent's last message: "${lastAssistantMsg ? lastAssistantMsg.content.substring(0, 150) : 'unknown'}"
+3. IMMEDIATELY continue teaching MORE about that exact topic — share a new fact, expand on it, or ask an engaging follow-up question
+
+WHAT NOT TO DO:
+- Do NOT ask "what do you want to learn about?" — they already said!
+- Do NOT repeat what the previous agent already shared
+- Do NOT just acknowledge and then wait — KEEP TEACHING
+- Do NOT give a generic greeting — be specific to the topic
+
+The child said "${lastUserMsg ? lastUserMsg.content : 'tell me more'}" which means they want you to CONTINUE explaining the topic, not start over.`;
             }
+
+            let voiceModel = "aura-asteria-en"; // Warm, sweet voice for Router (Asteria)
+            if (profileId === "knowledge") voiceModel = "aura-luna-en"; // Very friendly, warm voice for Knowledge (Luna)
+            else if (profileId === "brainstorm") voiceModel = "aura-stella-en"; // Gentle, calming voice for Brainstorm (Stella)
 
             const payload = {
                 type: "Settings",
@@ -724,7 +778,7 @@ You are being handed this conversation mid-session. The child has ALREADY been t
                         functions: profile.functions
                     },
                     speak: {
-                        provider: { type: "deepgram", model: "aura-asteria-en" }
+                        provider: { type: "deepgram", model: voiceModel }
                     }
                 }
             };
@@ -749,6 +803,7 @@ You are being handed this conversation mid-session. The child has ALREADY been t
         let activeSources = []; // Tracks currently playing audio nodes so we can stop them on barge-in
         let currentSessionId = null; // Analytics tracking ID
         let currentLongTermMemory = ""; // Cached memory so hot-swapped agents get the context too
+        let conversationHistory = []; // In-memory conversation tracking for seamless handoff (avoids DB race conditions)
 
         // UI Elements
         const orb = document.getElementById('agent-orb');
@@ -795,8 +850,14 @@ You are being handed this conversation mid-session. The child has ALREADY been t
             return "";
         }
 
+
         async function connect(profileId = 'router', historyMessages = [], isHotSwap = false) {
             try {
+                // Ensure config is loaded before connecting
+                if (!CONFIG.API_KEY) {
+                    await fetchConfig();
+                }
+
                 if (!isHotSwap) {
                     // Generate a unique analytics session ID whenever we connect fresh
                     currentSessionId = "SESSION_" + Date.now() + "_" + Math.floor(Math.random() * 1000);
@@ -872,43 +933,72 @@ You are being handed this conversation mid-session. The child has ALREADY been t
                             let greetingMessage;
 
                             if (isHotSwap && historyMessages && historyMessages.length > 0) {
-                                // Find the last thing the child said and what topic they chose
+                                // Find the last assistant message (contains the TOPIC being discussed)
+                                // AND the last user message (their response)
+                                const lastAssistantMsg = [...historyMessages].reverse().find(m => m.role === 'assistant');
                                 const lastUserMsg = [...historyMessages].reverse().find(m => m.role === 'user');
-                                const childSaid = lastUserMsg ? lastUserMsg.content.trim() : '';
 
-                                // Agent-specific context-aware openers — no generic intro, pick up the thread
-                                if (profileId === 'space') {
-                                    greetingMessage = childSaid
-                                        ? `Whoa, awesome! You want to explore ${childSaid.length < 60 ? childSaid : 'space'}? Buckle up, I'm Professor Orbit and I know everything about it! Let's dive right in!`
-                                        : `Whoa, space! Buckle up — I'm Professor Orbit, and we're going on a cosmic adventure right now!`;
-                                } else if (profileId === 'history') {
-                                    greetingMessage = childSaid
-                                        ? `Ooh, ${childSaid.length < 60 ? childSaid : 'history'}! Great choice! I'm Dr. Dino, your time-travel guide — let's jump straight into it!`
-                                        : `Time to travel through history! I'm Dr. Dino — what era shall we explore?`;
-                                } else if (profileId === 'science') {
-                                    greetingMessage = childSaid
-                                        ? `Oh that's so cool — ${childSaid.length < 60 ? childSaid : 'science'}! I'm Beaker, and I love that! Let's explore it together right now!`
-                                        : `Science time! I'm Beaker — let's do some exploring!`;
+                                // Extract the TOPIC from what the previous agent said (not the user's "tell me more")
+                                const topicContent = lastAssistantMsg ? lastAssistantMsg.content.trim() : '';
+                                // Shorten topic to first sentence or 60 chars for the greeting
+                                const firstSentence = topicContent.split(/[.!?]/)[0];
+                                const shortTopic = firstSentence.length < 60 ? firstSentence : firstSentence.substring(0, 57) + '...';
+
+                                // Check if user's response is generic ("yes", "tell me more", etc.)
+                                const childSaid = lastUserMsg ? lastUserMsg.content.trim().toLowerCase() : '';
+                                const isGenericResponse = /^(yes|yeah|sure|okay|ok|tell me more|more|that's? interesting|cool|wow)/.test(childSaid);
+
+                                // Agent-specific context-aware openers — pick up the thread naturally
+                                // Use the TOPIC from assistant message when user gave a generic response
+                                // All agents get personalized handoff greetings
+                                if (profileId === 'knowledge') {
+                                    // Knowledge Explorer
+                                    greetingMessage = shortTopic
+                                        ? `Ooh, I heard you were curious about "${shortTopic}"! That's awesome — let me tell you more about that!`
+                                        : `Hey there! I heard you want to learn about something cool. What topic are you curious about?`;
+                                } else if (profileId === 'brainstorm') {
+                                    // Brainstorming Coach
+                                    greetingMessage = shortTopic
+                                        ? `Hey, I heard you want to talk about something. I'm here to listen and help you think it through.`
+                                        : `Hey there! I'm here to help you think through things. Want to tell me what's on your mind?`;
                                 } else {
-                                    greetingMessage = childSaid
-                                        ? `Got it! I heard you — ${childSaid.length < 60 ? childSaid : 'let\'s keep going'}! I'm Cosmo, let's figure this out together!`
-                                        : `Hey, I'm Cosmo! Let's keep the adventure going!`;
+                                    // Router (when returning from knowledge or brainstorm)
+                                    greetingMessage = shortTopic
+                                        ? `Welcome back! I heard you were just exploring "${shortTopic}" — want to learn more, or try something new?`
+                                        : `Welcome back! Want to learn about something cool, or talk about something on your mind?`;
                                 }
                             } else {
-                                // Fresh connection — use standard greetings
-                                greetingMessage = "Hello!! What topic would you like to explore today? We can do Science, History or Space?";
-                                if (profileId === 'space') greetingMessage = "Hi cadet! I'm Professor Orbit! Ready for blast off to the moon or Mars?";
-                                if (profileId === 'history') greetingMessage = "Roar! I'm Dr. Dino, your time-travel guide. Want to hear about dinosaurs or castles?";
-                                if (profileId === 'science') greetingMessage = "Hey scientist! I'm Beaker. Do you want to talk about animals, experiments, or the world around you?";
+                                // Fresh connection — only use standard greetings for non-router agents
+                                if (profileId === 'knowledge') greetingMessage = "Hey there! I'm your learning buddy. What topic are you curious about today?";
+                                else if (profileId === 'brainstorm') greetingMessage = "Hey! I'm here to help you think things through. Want to tell me what's on your mind?";
                             }
 
-                            // Inject greeting with tiny delay so Deepgram backend has processed SettingsApplied
+                            // Trigger agent to speak with tiny delay so Deepgram backend has processed SettingsApplied
                             setTimeout(() => {
                                 if (ws && ws.readyState === WebSocket.OPEN) {
-                                    ws.send(JSON.stringify({
-                                        type: "InjectAgentMessage",
-                                        content: greetingMessage
-                                    }));
+                                    if (isHotSwap) {
+                                        // HANDOFF: Don't inject a static greeting — let the LLM generate its response
+                                        // using the HANDOFF CONTEXT in the prompt. This way it will acknowledge
+                                        // the topic AND continue teaching in one natural response.
+                                        // Inject a hidden user message to trigger the LLM to respond.
+                                        ws.send(JSON.stringify({
+                                            type: "InjectUserMessage",
+                                            content: "[Continue the conversation from the handoff context]"
+                                        }));
+                                        console.log(`[Handoff] Triggered LLM to generate context-aware response for ${profileId}`);
+                                    } else if (profileId === 'router') {
+                                        // Fresh router connection: trigger generate_greeting function
+                                        ws.send(JSON.stringify({
+                                            type: "InjectUserMessage",
+                                            content: "Hello!"
+                                        }));
+                                    } else if (greetingMessage) {
+                                        // Fresh non-router connection: use fixed greeting
+                                        ws.send(JSON.stringify({
+                                            type: "InjectAgentMessage",
+                                            content: greetingMessage
+                                        }));
+                                    }
                                 }
                             }, 250);
                             break;
@@ -951,36 +1041,70 @@ You are being handed this conversation mid-session. The child has ALREADY been t
                             }
                             break;
 
-                        case 'FunctionCallRequest':
-                            // Deepgram Agent decided it is time to route the conversation!
+                        case 'FunctionCallRequest': {
                             const funcData = message.functions[0];
-                            console.log(`[Function Hit] LLM requested transition via: ${funcData.name}`);
+                            console.log(`[Function Hit] ${funcData.name}`, funcData.arguments);
 
-                            // 1. Acknowledge and prompt the old agent to say a transition phrase
-                            ws.send(JSON.stringify({
-                                type: "FunctionCallResponse",
-                                id: funcData.id,
-                                name: funcData.name,
-                                content: "Transition acknowledged. The user is being routed. Please say a very short 1-sentence goodbye or transition phrase and stop."
-                            }));
+                            if (funcData.name === 'generate_greeting') {
+                                // Client-side: hit our Express endpoint, return the fact to the router
+                                try {
+                                    let userId = 'kid_1';
+                                    try { userId = JSON.parse(funcData.arguments).user_id || 'kid_1'; } catch (_) { }
 
-                            // 2. Queue the Handoff for when the Agent finishes speaking its goodbye
-                            window.pendingHandoff = funcData.name;
-
-                            // Fallback just in case the AI decides to stay silent
-                            setTimeout(() => {
-                                if (window.pendingHandoff === funcData.name) {
-                                    console.log("[Handoff] AudioDone fallback timeout reached. Forcing swap.");
-                                    window.pendingHandoff = null;
-                                    handleAgentHandoff(funcData.name);
+                                    const greetRes = await fetch('/api/greeting', {
+                                        method: 'POST',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({ userId })
+                                    });
+                                    const { greeting } = await greetRes.json();
+                                    ws.send(JSON.stringify({
+                                        type: 'FunctionCallResponse',
+                                        id: funcData.id,
+                                        name: funcData.name,
+                                        content: greeting
+                                    }));
+                                    console.log(`[Greeting] Delivered fact to router: "${greeting}"`);
+                                } catch (err) {
+                                    console.error('[Greeting] Failed, sending fallback.', err);
+                                    ws.send(JSON.stringify({
+                                        type: 'FunctionCallResponse',
+                                        id: funcData.id,
+                                        name: funcData.name,
+                                        content: "Did you know that a group of flamingos is called a flamboyance? Pretty fancy name for some pink birds!"
+                                    }));
                                 }
-                            }, 4000);
+                            } else {
+                                // Routing function: acknowledge, let agent say goodbye, then hot-swap
+                                ws.send(JSON.stringify({
+                                    type: 'FunctionCallResponse',
+                                    id: funcData.id,
+                                    name: funcData.name,
+                                    content: 'Transition acknowledged. Say a very short 1-sentence goodbye or handoff phrase and stop.'
+                                }));
+                                window.pendingHandoff = funcData.name;
+
+                                // Fallback if the agent stays silent
+                                setTimeout(() => {
+                                    if (window.pendingHandoff === funcData.name) {
+                                        console.log('[Handoff] Timeout fallback — forcing swap.');
+                                        window.pendingHandoff = null;
+                                        handleAgentHandoff(funcData.name);
+                                    }
+                                }, 4000);
+                            }
                             break;
+                        }
 
                         case 'ConversationText':
                             addLogBubble(message.content, message.role);
 
-                            // Immediately save to our Analytics Database (fire and forget)
+                            // Track conversation in-memory for seamless handoff (no DB race condition)
+                            conversationHistory.push({
+                                role: message.role,
+                                content: message.content
+                            });
+
+                            // Also save to Analytics Database (fire and forget)
                             if (currentSessionId) {
                                 fetch('/api/logs', {
                                     method: 'POST',
@@ -1071,30 +1195,59 @@ You are being handed this conversation mid-session. The child has ALREADY been t
 
             activeSources = [];
             nextPlayTime = 0;
+            conversationHistory = []; // Clear in-memory history for next session
 
             console.log("Fully disconnected hardware and websockets.");
         }
 
         // ---- Multi-Agent Handoff Integration ---- //
 
-        async function fetchHistoryForHandoff(sessionId) {
-            console.log(`[Handoff] Fetching raw conversation history for ${sessionId}...`);
-            try {
-                // Fetch the raw chat log from SQLite (Takes ~10ms, safe to block)
-                const res = await fetch(`/api/conversations/${sessionId}`);
-                const history = await res.json();
+        /**
+         * Get conversation history for handoff from in-memory array.
+         * Using in-memory avoids race conditions with async DB writes.
+         * Format: { type: "History", role, content } - Deepgram REQUIRES type: "History"!
+         */
+        function getHistoryForHandoff() {
+            // Filter empty messages and limit to last 20 to avoid context overflow
+            const MAX_HISTORY_MESSAGES = 20;
+            const safeHistory = conversationHistory
+                .filter(msg => msg.content && msg.content.trim().length > 0)
+                .slice(-MAX_HISTORY_MESSAGES);
 
-                // Filter empty messages and map the roles into Deepgram's expected Context Schema ('user' or 'assistant')
-                const safeHistory = history.filter(msg => msg.content && msg.content.trim().length > 0);
-                return safeHistory.map(msg => ({
-                    type: 'History',
-                    role: (msg.role === 'user' || msg.role === 'assistant') ? msg.role : 'assistant',
-                    content: msg.content.trim()
-                }));
-            } catch (err) {
-                console.error(`[Handoff] Failed to fetch raw history endpoint:`, err);
-                return [];
+            console.log(`[Handoff] Preparing ${safeHistory.length} messages from in-memory history`);
+            return safeHistory.map(msg => ({
+                type: "History",  // Required by Deepgram API!
+                role: (msg.role === 'user' || msg.role === 'assistant') ? msg.role : 'assistant',
+                content: msg.content.trim()
+            }));
+        }
+
+        /**
+         * Summarize conversation for long handoffs (optional, for conversations > threshold).
+         * Uses Gemini to create a concise summary the new agent can quickly understand.
+         */
+        async function summarizeConversationForHandoff() {
+            const SUMMARIZE_THRESHOLD = 10; // Only summarize if > 10 messages
+
+            if (conversationHistory.length <= SUMMARIZE_THRESHOLD) {
+                return null; // Short conversations don't need summarization
             }
+
+            try {
+                const res = await fetch('/api/handoff-summary', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ messages: conversationHistory })
+                });
+                const data = await res.json();
+                if (data.success && data.summary) {
+                    console.log(`[Handoff] Got conversation summary: "${data.summary.substring(0, 100)}..."`);
+                    return data.summary;
+                }
+            } catch (err) {
+                console.warn('[Handoff] Summary generation failed, using raw history:', err);
+            }
+            return null;
         }
 
         async function handleAgentHandoff(functionName) {
@@ -1102,28 +1255,37 @@ You are being handed this conversation mid-session. The child has ALREADY been t
 
             // Map function payload back to the explicit internal Agent Profile key
             let targetProfile = null;
-            if (functionName === "route_to_space") targetProfile = "space";
-            if (functionName === "route_to_history") targetProfile = "history";
-            if (functionName === "route_to_science") targetProfile = "science";
+            if (functionName === "route_to_knowledge") targetProfile = "knowledge";
+            if (functionName === "route_to_brainstorm") targetProfile = "brainstorm";
             if (functionName === "route_to_router" || functionName === "report_engagement_drop") targetProfile = "router";
             if (!targetProfile) {
                 console.error(`[Handoff] Unknown routing function '${functionName}'. Aborting handoff.`);
                 return;
             }
 
-            // 1. Fetch raw context history so the new agent knows exactly what was just said
-            let historyToPass = [];
-            if (currentSessionId) {
-                historyToPass = await fetchHistoryForHandoff(currentSessionId);
-                console.log(`[Handoff] Retrieved ${historyToPass.length} previous messages to inject as context.`);
+            // 1. Get context history from in-memory array (avoids DB race condition!)
+            let historyToPass = getHistoryForHandoff();
+            console.log(`[Handoff] Passing ${historyToPass.length} messages to new agent as context.`);
 
-                // Track the outgoing agent as a discrete completed session on the Admin Dashboard
+            // Optional: Get a summarized version for long conversations
+            const summary = await summarizeConversationForHandoff();
+
+            // Track the outgoing agent as a discrete completed session on the Admin Dashboard
+            if (currentSessionId) {
                 console.log(`[Analytics] Requesting background summary for outgoing Session ID: ${currentSessionId}`);
                 fetch(`/api/conversations/${currentSessionId}/summarize`, { method: 'POST' })
                     .catch(err => console.error("Summary request failed", err));
 
                 // Slice the session timeline so the incoming agent tracks analytics cleanly
                 currentSessionId = "SESSION_" + Date.now() + "_" + Math.floor(Math.random() * 1000);
+            }
+
+            // Store summary in history context if available (prepend as system-like context)
+            if (summary) {
+                historyToPass = [
+                    { type: "History", role: 'assistant', content: `[Previous conversation summary: ${summary}]` },
+                    ...historyToPass.slice(-5) // Keep last 5 messages + summary for recency
+                ];
             }
 
             // 2. Shut down the CURRENT WebSocket *ONLY*
@@ -1181,6 +1343,7 @@ You are being handed this conversation mid-session. The child has ALREADY been t
         }
 
         // Audio Scheduling Queue
+        const TTS_PLAYBACK_RATE = 0.85;
         let nextPlayTime = 0;
 
         async function playBinaryAudio(arrayBuffer) {
@@ -1201,6 +1364,7 @@ You are being handed this conversation mid-session. The child has ALREADY been t
             // Scheduling
             const source = audioContext.createBufferSource();
             source.buffer = audioBuffer;
+            source.playbackRate.value = TTS_PLAYBACK_RATE;
             source.connect(audioContext.destination);
 
             const currentTime = audioContext.currentTime;
@@ -1221,7 +1385,7 @@ You are being handed this conversation mid-session. The child has ALREADY been t
             };
 
             source.start(nextPlayTime);
-            nextPlayTime += audioBuffer.duration;
+            nextPlayTime += audioBuffer.duration / TTS_PLAYBACK_RATE;
         }
 
     </script>
