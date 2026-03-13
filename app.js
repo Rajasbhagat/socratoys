@@ -49,9 +49,11 @@ app.use(express.static(path.join(__dirname)));
  * This ensures API keys are not hardcoded in the HTML.
  */
 app.get('/api/config', (req, res) => {
+    const provider = process.env.VOICE_PROVIDER || 'deepgram';
     res.json({
-        DEEPGRAM_API_KEY: process.env.DEEPGRAM_API_KEY,
-        // Add other public config here if needed
+        VOICE_PROVIDER: provider,
+        DEEPGRAM_API_KEY: provider === 'deepgram' ? process.env.DEEPGRAM_API_KEY : undefined,
+        GEMINI_API_KEY: provider === 'gemini' ? process.env.GEMINI_API_KEY : undefined,
     });
 });
 
