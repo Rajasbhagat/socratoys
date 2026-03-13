@@ -263,6 +263,9 @@ You must output a JSON object containing:
 
         const resultJson = JSON.parse(response.text);
 
+        // Use dynamic user_id from request body, fallback to DEFAULT_USER_ID
+        const userId = req.body.user_id || DEFAULT_USER_ID;
+
         // Save to sessions_meta (existing fields)
         await db.saveSessionMeta(
             sessionId,
@@ -280,7 +283,7 @@ You must output a JSON object containing:
         const es = resultJson.engagement_signals || {};
         await db.saveSessionAnalytics({
             session_id: sessionId,
-            user_id: DEFAULT_USER_ID,
+            user_id: userId,
             agent_type: resultJson.agent_type || null,
             mode: null,
             turn_count: messages.length,
@@ -307,7 +310,7 @@ You must output a JSON object containing:
             for (const interest of resultJson.interest_topics) {
                 const engagementVal = engagementMap[interest.engagement_level] || 0.5;
                 const timeSeconds = (interest.estimated_minutes || 1) * 60;
-                await db.upsertChildInterest(DEFAULT_USER_ID, interest.topic, timeSeconds, engagementVal);
+                await db.upsertChildInterest(userId, interest.topic, timeSeconds, engagementVal);
             }
         }
 
@@ -315,7 +318,7 @@ You must output a JSON object containing:
         if (resultJson.user_facts && resultJson.user_facts.length > 0) {
             for (const item of resultJson.user_facts) {
                 if (item.confidence > MEMORY_CONFIDENCE_THRESHOLD) {
-                    await db.saveMemory(DEFAULT_USER_ID, item.fact, item.confidence);
+                    await db.saveMemory(userId, item.fact, item.confidence);
                 }
             }
         }
@@ -648,6 +651,216 @@ app.get('/api/analytics/safety/:userId', async (req, res) => {
         return res.json({ success: true, alerts });
     } catch (err) {
         console.error("Failed to fetch safety alerts:", err);
+        return res.status(500).json({ error: "Database error" });
+    }
+});
+
+// =============================================================================
+// CHILD PROFILE API ENDPOINTS
+// =============================================================================
+
+/**
+ * GET /api/profiles
+ * List all child profiles.
+ */
+app.get('/api/profiles', async (req, res) => {
+    try {
+        const profiles = await db.getChildProfiles();
+        return res.json({ success: true, profiles });
+    } catch (err) {
+        console.error("Failed to fetch profiles:", err);
+        return res.status(500).json({ error: "Database error" });
+    }
+});
+
+/**
+ * POST /api/profiles
+ * Create a new child profile.
+ * Body: { display_name, age?, avatar_color? }
+ */
+app.post('/api/profiles', async (req, res) => {
+    try {
+        const { display_name, age, avatar_color } = req.body;
+        if (!display_name) {
+            return res.status(400).json({ error: "display_name is required" });
+        }
+        // Generate a URL-safe user_id from the display name
+        const userId = display_name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '') + '_' + Date.now().toString(36);
+        await db.createChildProfile(userId, display_name, age || null, avatar_color || '#d946ef');
+        return res.json({ success: true, user_id: userId });
+    } catch (err) {
+        console.error("Failed to create profile:", err);
+        return res.status(500).json({ error: String(err) });
+    }
+});
+
+/**
+ * GET /api/profiles/:userId
+ * Get a single child profile.
+ */
+app.get('/api/profiles/:userId', async (req, res) => {
+    try {
+        const profile = await db.getChildProfile(req.params.userId);
+        if (!profile) return res.status(404).json({ error: "Profile not found" });
+        return res.json({ success: true, profile });
+    } catch (err) {
+        console.error("Failed to fetch profile:", err);
+        return res.status(500).json({ error: "Database error" });
+    }
+});
+
+/**
+ * PUT /api/profiles/:userId
+ * Update a child profile.
+ * Body: { display_name?, age?, avatar_color? }
+ */
+app.put('/api/profiles/:userId', async (req, res) => {
+    try {
+        const { display_name, age, avatar_color } = req.body;
+        await db.updateChildProfile(req.params.userId, { display_name, age, avatar_color });
+        return res.json({ success: true });
+    } catch (err) {
+        console.error("Failed to update profile:", err);
+        return res.status(500).json({ error: String(err) });
+    }
+});
+
+/**
+ * DELETE /api/profiles/:userId
+ * Delete a child profile and all associated data.
+ */
+app.delete('/api/profiles/:userId', async (req, res) => {
+    try {
+        await db.deleteChildProfile(req.params.userId);
+        return res.json({ success: true });
+    } catch (err) {
+        console.error("Failed to delete profile:", err);
+        return res.status(500).json({ error: String(err) });
+    }
+});
+
+// =============================================================================
+// RECOMMENDATIONS API ENDPOINTS
+// =============================================================================
+
+/**
+ * POST /api/recommendations/:userId/generate
+ * Generate content recommendations using Gemini based on child's interests and patterns.
+ */
+app.post('/api/recommendations/:userId/generate', async (req, res) => {
+    try {
+        const userId = req.params.userId;
+
+        // Gather child data for Gemini
+        const [interests, memories, behavior, profile] = await Promise.all([
+            db.getChildInterests(userId),
+            db.getAllMemoriesByUser(userId),
+            db.getBehaviorSummary(userId),
+            db.getChildProfile(userId)
+        ]);
+
+        if (memories.length === 0 && interests.length === 0) {
+            return res.json({
+                success: true,
+                recommendations: [],
+                message: "Not enough data yet. Have some conversations first!"
+            });
+        }
+
+        const childAge = profile?.age || 'unknown';
+        const childName = profile?.display_name || 'the child';
+        const interestList = interests.map(i => `- ${i.topic} (${i.session_count} sessions, engagement: ${Math.round((i.avg_engagement || 0) * 100)}%)`).join('\n');
+        const factList = memories.slice(0, 15).map(m => `- ${m.fact}`).join('\n');
+        const explorationStyle = behavior?.predominant_exploration_style === 'deep_diver' ? 'deep diver who likes to explore topics in depth' : 'broad explorer who likes sampling many topics';
+
+        const response = await geminiClient.models.generateContent({
+            model: 'gemini-2.0-flash',
+            contents: `You are a children's education recommendation engine. Based on the following data about a child, generate personalized learning recommendations.
+
+CHILD INFO:
+- Name: ${childName}
+- Age: ${childAge}
+- Exploration style: ${explorationStyle}
+
+TOPIC INTERESTS:
+${interestList || 'No topics tracked yet.'}
+
+KNOWN FACTS ABOUT THE CHILD:
+${factList || 'No facts collected yet.'}
+
+Generate 6-8 specific, actionable recommendations across these categories:
+- "course": Online courses or structured learning paths (e.g., Khan Academy Kids, Brilliant.org)
+- "video": Educational YouTube channels or specific video series
+- "book": Books, blogs, or reading material appropriate for the child's age
+- "activity": Hands-on activities, experiments, or creative projects
+
+Each recommendation should be specific (not generic), directly tied to the child's interests, and age-appropriate.`,
+            config: {
+                responseMimeType: "application/json",
+                responseSchema: {
+                    type: "OBJECT",
+                    properties: {
+                        recommendations: {
+                            type: "ARRAY",
+                            items: {
+                                type: "OBJECT",
+                                properties: {
+                                    type: { type: "STRING" },
+                                    title: { type: "STRING" },
+                                    description: { type: "STRING" },
+                                    reason: { type: "STRING" },
+                                    topic_match: { type: "STRING" }
+                                },
+                                required: ["type", "title", "description", "reason", "topic_match"]
+                            }
+                        }
+                    },
+                    required: ["recommendations"]
+                }
+            }
+        });
+
+        const result = JSON.parse(response.text);
+        const recommendations = result.recommendations || [];
+
+        // Cache in database
+        if (recommendations.length > 0) {
+            await db.saveRecommendations(userId, recommendations);
+        }
+
+        return res.json({ success: true, recommendations });
+    } catch (err) {
+        console.error("Failed to generate recommendations:", err);
+        return res.status(500).json({ error: String(err) });
+    }
+});
+
+/**
+ * GET /api/recommendations/:userId
+ * Get cached recommendations for a user.
+ * Optional query param: ?type=course
+ */
+app.get('/api/recommendations/:userId', async (req, res) => {
+    try {
+        const type = req.query.type || null;
+        const recommendations = await db.getRecommendations(req.params.userId, type);
+        return res.json({ success: true, recommendations });
+    } catch (err) {
+        console.error("Failed to fetch recommendations:", err);
+        return res.status(500).json({ error: "Database error" });
+    }
+});
+
+/**
+ * POST /api/recommendations/:id/dismiss
+ * Dismiss a recommendation.
+ */
+app.post('/api/recommendations/:id/dismiss', async (req, res) => {
+    try {
+        await db.dismissRecommendation(req.params.id);
+        return res.json({ success: true });
+    } catch (err) {
+        console.error("Failed to dismiss recommendation:", err);
         return res.status(500).json({ error: "Database error" });
     }
 });
