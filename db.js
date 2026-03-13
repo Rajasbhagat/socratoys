@@ -115,6 +115,35 @@ function initializeTables() {
         UNIQUE(user_id, topic)
     )`, logTableError('child_interests'));
 
+    // Table: child_profiles - Stores child profile information
+    db.run(`CREATE TABLE IF NOT EXISTS child_profiles (
+        user_id TEXT PRIMARY KEY,
+        display_name TEXT NOT NULL,
+        age INTEGER,
+        avatar_color TEXT DEFAULT '#d946ef',
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        last_active DATETIME DEFAULT CURRENT_TIMESTAMP
+    )`, (err) => {
+        if (err) {
+            console.error("Error creating child_profiles table", err);
+        } else {
+            seedDefaultProfile();
+        }
+    });
+
+    // Table: recommendations - Caches Gemini-generated content recommendations
+    db.run(`CREATE TABLE IF NOT EXISTS recommendations (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id TEXT NOT NULL,
+        type TEXT NOT NULL,
+        title TEXT NOT NULL,
+        description TEXT,
+        reason TEXT,
+        topic_match TEXT,
+        generated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        is_dismissed BOOLEAN DEFAULT 0
+    )`, logTableError('recommendations'));
+
     // Table: agent_prompts - Version-controlled system prompts for agents
     db.run(`CREATE TABLE IF NOT EXISTS agent_prompts (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -145,6 +174,21 @@ function logTableError(tableName) {
 // =============================================================================
 // DATABASE SEEDING
 // =============================================================================
+
+/**
+ * Seed a default child profile on first run.
+ * Only seeds if the child_profiles table is empty.
+ */
+function seedDefaultProfile() {
+    db.get('SELECT COUNT(*) as count FROM child_profiles', (err, row) => {
+        if (err || row.count > 0) return;
+        console.log("Seeding default child profile 'kid_1'...");
+        db.run(
+            'INSERT INTO child_profiles (user_id, display_name, age, avatar_color) VALUES (?, ?, ?, ?)',
+            ['kid_1', 'Kid #1', null, '#d946ef']
+        );
+    });
+}
 
 /**
  * Seed default agent prompts from markdown files on first run.
@@ -654,6 +698,194 @@ function getSafetyAlerts(userId) {
 }
 
 // =============================================================================
+// CHILD PROFILE OPERATIONS
+// =============================================================================
+
+/**
+ * Create a new child profile.
+ * @param {string} userId - Unique user identifier
+ * @param {string} displayName - Child's display name
+ * @param {number|null} age - Child's age
+ * @param {string} avatarColor - Hex color for avatar
+ * @returns {Promise<boolean>} Success indicator
+ */
+function createChildProfile(userId, displayName, age = null, avatarColor = '#d946ef') {
+    return new Promise((resolve, reject) => {
+        const stmt = db.prepare(
+            'INSERT INTO child_profiles (user_id, display_name, age, avatar_color) VALUES (?, ?, ?, ?)'
+        );
+        stmt.run([userId, displayName, age, avatarColor], function (err) {
+            if (err) reject(err);
+            else resolve(true);
+        });
+        stmt.finalize();
+    });
+}
+
+/**
+ * Get all child profiles ordered by last activity.
+ * @returns {Promise<Array>} Array of profile objects
+ */
+function getChildProfiles() {
+    return new Promise((resolve, reject) => {
+        db.all(
+            'SELECT * FROM child_profiles ORDER BY last_active DESC',
+            [],
+            (err, rows) => {
+                if (err) reject(err);
+                else resolve(rows);
+            }
+        );
+    });
+}
+
+/**
+ * Get a single child profile.
+ * @param {string} userId - User identifier
+ * @returns {Promise<Object|null>} Profile object or null
+ */
+function getChildProfile(userId) {
+    return new Promise((resolve, reject) => {
+        db.get(
+            'SELECT * FROM child_profiles WHERE user_id = ?',
+            [userId],
+            (err, row) => {
+                if (err) reject(err);
+                else resolve(row || null);
+            }
+        );
+    });
+}
+
+/**
+ * Update a child profile's fields.
+ * @param {string} userId - User identifier
+ * @param {Object} fields - Fields to update { display_name?, age?, avatar_color? }
+ * @returns {Promise<boolean>} Success indicator
+ */
+function updateChildProfile(userId, fields) {
+    return new Promise((resolve, reject) => {
+        const setClauses = [];
+        const values = [];
+        if (fields.display_name !== undefined) { setClauses.push('display_name = ?'); values.push(fields.display_name); }
+        if (fields.age !== undefined) { setClauses.push('age = ?'); values.push(fields.age); }
+        if (fields.avatar_color !== undefined) { setClauses.push('avatar_color = ?'); values.push(fields.avatar_color); }
+        if (setClauses.length === 0) return resolve(true);
+        values.push(userId);
+        db.run(`UPDATE child_profiles SET ${setClauses.join(', ')} WHERE user_id = ?`, values, (err) => {
+            if (err) reject(err);
+            else resolve(true);
+        });
+    });
+}
+
+/**
+ * Delete a child profile and all associated data.
+ * @param {string} userId - User identifier
+ * @returns {Promise<boolean>} Success indicator
+ */
+function deleteChildProfile(userId) {
+    return new Promise((resolve, reject) => {
+        db.serialize(() => {
+            db.run('DELETE FROM user_memory WHERE user_id = ?', [userId]);
+            db.run('DELETE FROM session_analytics WHERE user_id = ?', [userId]);
+            db.run('DELETE FROM child_interests WHERE user_id = ?', [userId]);
+            db.run('DELETE FROM recommendations WHERE user_id = ?', [userId]);
+            db.run('DELETE FROM child_profiles WHERE user_id = ?', [userId], (err) => {
+                if (err) reject(err);
+                else resolve(true);
+            });
+        });
+    });
+}
+
+/**
+ * Update last_active timestamp for a child profile.
+ * @param {string} userId - User identifier
+ * @returns {Promise<boolean>} Success indicator
+ */
+function touchProfileActivity(userId) {
+    return new Promise((resolve, reject) => {
+        db.run(
+            'UPDATE child_profiles SET last_active = CURRENT_TIMESTAMP WHERE user_id = ?',
+            [userId],
+            (err) => {
+                if (err) reject(err);
+                else resolve(true);
+            }
+        );
+    });
+}
+
+// =============================================================================
+// RECOMMENDATION OPERATIONS
+// =============================================================================
+
+/**
+ * Save a batch of recommendations for a user.
+ * Clears existing non-dismissed recommendations before inserting.
+ * @param {string} userId - User identifier
+ * @param {Array} recommendations - Array of { type, title, description, reason, topic_match }
+ * @returns {Promise<boolean>} Success indicator
+ */
+function saveRecommendations(userId, recommendations) {
+    return new Promise((resolve, reject) => {
+        db.serialize(() => {
+            // Clear previous non-dismissed recommendations
+            db.run('DELETE FROM recommendations WHERE user_id = ? AND is_dismissed = 0', [userId]);
+
+            const stmt = db.prepare(
+                'INSERT INTO recommendations (user_id, type, title, description, reason, topic_match) VALUES (?, ?, ?, ?, ?, ?)'
+            );
+            for (const rec of recommendations) {
+                stmt.run([userId, rec.type, rec.title, rec.description || null, rec.reason || null, rec.topic_match || null]);
+            }
+            stmt.finalize((err) => {
+                if (err) reject(err);
+                else resolve(true);
+            });
+        });
+    });
+}
+
+/**
+ * Get recommendations for a user, optionally filtered by type.
+ * Excludes dismissed recommendations.
+ * @param {string} userId - User identifier
+ * @param {string|null} type - Optional type filter
+ * @returns {Promise<Array>} Array of recommendation objects
+ */
+function getRecommendations(userId, type = null) {
+    return new Promise((resolve, reject) => {
+        let query = 'SELECT * FROM recommendations WHERE user_id = ? AND is_dismissed = 0';
+        const params = [userId];
+        if (type) {
+            query += ' AND type = ?';
+            params.push(type);
+        }
+        query += ' ORDER BY generated_at DESC';
+        db.all(query, params, (err, rows) => {
+            if (err) reject(err);
+            else resolve(rows);
+        });
+    });
+}
+
+/**
+ * Dismiss a recommendation by ID.
+ * @param {number} id - Recommendation ID
+ * @returns {Promise<boolean>} Success indicator
+ */
+function dismissRecommendation(id) {
+    return new Promise((resolve, reject) => {
+        db.run('UPDATE recommendations SET is_dismissed = 1 WHERE id = ?', [id], (err) => {
+            if (err) reject(err);
+            else resolve(true);
+        });
+    });
+}
+
+// =============================================================================
 // UTILITY FUNCTIONS
 // =============================================================================
 
@@ -684,5 +916,14 @@ export {
     getChildInterests,
     getThinkingPatterns,
     getBehaviorSummary,
-    getSafetyAlerts
+    getSafetyAlerts,
+    createChildProfile,
+    getChildProfiles,
+    getChildProfile,
+    updateChildProfile,
+    deleteChildProfile,
+    touchProfileActivity,
+    saveRecommendations,
+    getRecommendations,
+    dismissRecommendation
 };
