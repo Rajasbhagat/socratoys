@@ -253,53 +253,141 @@
         .rec-type-video { background: rgba(239,68,68,0.12); color: #f87171; border: 1px solid rgba(239,68,68,0.2); }
         .rec-type-book { background: rgba(34,197,94,0.12); color: #4ade80; border: 1px solid rgba(34,197,94,0.2); }
         .rec-type-activity { background: rgba(251,146,60,0.12); color: #fb923c; border: 1px solid rgba(251,146,60,0.2); }
+
+        /* ---- Topic Selection Pills ---- */
+        .topic-pill {
+            padding: 6px 14px;
+            border-radius: 99px;
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            user-select: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        /* Core (Toggleable, default ON) */
+        .topic-pill.core { background: rgba(255,255,255,0.05); color: #c8c4c0; border: 1px solid rgba(255,255,255,0.1); }
+        .topic-pill.core.selected { background: rgba(129,140,248,0.15); color: #818cf8; border-color: rgba(129,140,248,0.3); }
+        
+        /* Sensitive (Toggleable, default OFF) */
+        .topic-pill.sensitive { background: rgba(255,255,255,0.05); color: #c8c4c0; border: 1px solid rgba(255,255,255,0.1); }
+        .topic-pill.sensitive.selected { background: rgba(250,204,21,0.15); color: #facc15; border-color: rgba(250,204,21,0.3); }
+        
+        /* Blocked (Static, default ON) */
+        .topic-pill.blocked { background: rgba(239,68,68,0.1); color: #fca5a5; border: 1px solid rgba(239,68,68,0.2); cursor: not-allowed; opacity: 0.8; }
+
+        /* ---- Kid Cards ---- */
+        .kid-card {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 16px;
+            padding: 24px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            position: relative;
+            overflow: hidden;
+        }
+        .kid-card:hover {
+            background: rgba(255,255,255,0.06);
+            border-color: rgba(217,70,239,0.3);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+        }
+        .kid-card-avatar {
+            width: 52px;
+            height: 52px;
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            font-weight: 700;
+            color: white;
+            flex-shrink: 0;
+        }
+        .kid-card-open-btn {
+            padding: 8px 16px;
+            background: linear-gradient(135deg, #d946ef, #818cf8);
+            color: white;
+            font-size: 12px;
+            font-weight: 600;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: opacity 0.15s ease;
+            width: fit-content;
+            margin-top: 4px;
+        }
+        .kid-card-open-btn:hover { opacity: 0.85; }
     </style>
 </head>
 
 <body>
-    <!-- Sub Navigation (Analytics / Prompt Tuning / Child Profile) -->
-    <header
-        style="height:44px; background:#111110; border-bottom:1px solid rgba(255,255,255,0.06); display:flex; align-items:center; padding:0 20px; gap:4px; flex-shrink:0; z-index:50;">
+    <header id="admin-header" style="height:44px; background:#111110; border-bottom:1px solid rgba(255,255,255,0.06); display:flex; align-items:center; padding:0 16px; gap:8px; flex-shrink:0; z-index:50;">
 
-        <!-- Profile Switcher -->
-        <div style="display:flex; align-items:center; gap:6px; margin-right:12px;">
-            <i data-lucide="user-round" style="width:14px; height:14px; color:#d946ef;"></i>
-            <select id="admin-profile-select" class="admin-profile-select" onchange="onAdminProfileChanged()">
-                <option value="kid_1">Loading...</option>
-            </select>
-        </div>
+        <!-- Back button (hidden on landing) -->
+        <button id="btn-back-to-kids" onclick="showLanding()" style="display:none; align-items:center; gap:6px; padding:5px 12px; border-radius:7px; font-size:13px; font-weight:500; border:none; cursor:pointer; background:rgba(255,255,255,0.07); color:#a8a29e; transition:all 0.15s ease;" onmouseover="this.style.background='rgba(255,255,255,0.12)'" onmouseout="this.style.background='rgba(255,255,255,0.07)'">
+            <i data-lucide="arrow-left" style="width:13px; height:13px;"></i> All Kids
+        </button>
 
-        <div style="width:1px; height:20px; background:rgba(255,255,255,0.08); margin-right:4px;"></div>
+        <!-- Kid name (hidden on landing) -->
+        <span id="header-kid-name" style="display:none; font-size:14px; font-weight:600; color:#fafaf9; margin-right:4px;"></span>
 
-        <button
-            style="display:flex; align-items:center; gap:7px; padding:5px 14px; border-radius:7px; font-size:13px; font-weight:500; border:none; cursor:pointer; transition:all 0.15s ease; background:rgba(255,255,255,0.1); color:#fafaf9;"
-            id="tab-analytics" onclick="switchTab('analytics')">
+        <!-- Divider (hidden on landing) -->
+        <div id="header-divider" style="display:none; width:1px; height:20px; background:rgba(255,255,255,0.08); margin:0 4px;"></div>
+
+        <!-- Tab buttons (hidden on landing, shown in kid dashboard) -->
+        <button style="display:none; align-items:center; gap:7px; padding:5px 14px; border-radius:7px; font-size:13px; font-weight:500; border:none; cursor:pointer; transition:all 0.15s ease; background:rgba(255,255,255,0.1); color:#fafaf9;"
+            id="tab-analytics" class="admin-tab-btn" onclick="switchTab('analytics')">
             <i data-lucide="bar-chart-2" style="width:13px; height:13px;"></i> Analytics
         </button>
-        <button
-            style="display:flex; align-items:center; gap:7px; padding:5px 14px; border-radius:7px; font-size:13px; font-weight:500; border:none; cursor:pointer; transition:all 0.15s ease; background:transparent; color:#a8a29e;"
-            id="tab-prompts" onclick="switchTab('prompts')">
+        <button style="display:none; align-items:center; gap:7px; padding:5px 14px; border-radius:7px; font-size:13px; font-weight:500; border:none; cursor:pointer; transition:all 0.15s ease; background:transparent; color:#a8a29e;"
+            id="tab-prompts" class="admin-tab-btn" onclick="switchTab('prompts')">
             <i data-lucide="terminal" style="width:13px; height:13px;"></i> Prompt Tuning
         </button>
-        <button
-            style="display:flex; align-items:center; gap:7px; padding:5px 14px; border-radius:7px; font-size:13px; font-weight:500; border:none; cursor:pointer; transition:all 0.15s ease; background:transparent; color:#a8a29e;"
-            id="tab-profile" onclick="switchTab('profile')">
+        <button style="display:none; align-items:center; gap:7px; padding:5px 14px; border-radius:7px; font-size:13px; font-weight:500; border:none; cursor:pointer; transition:all 0.15s ease; background:transparent; color:#a8a29e;"
+            id="tab-profile" class="admin-tab-btn" onclick="switchTab('profile')">
             <i data-lucide="user-round" style="width:13px; height:13px;"></i> Child Profile
         </button>
-        <button
-            style="display:flex; align-items:center; gap:7px; padding:5px 14px; border-radius:7px; font-size:13px; font-weight:500; border:none; cursor:pointer; transition:all 0.15s ease; background:transparent; color:#a8a29e;"
-            id="tab-insights" onclick="switchTab('insights')">
-            <i data-lucide="lightbulb" style="width:13px; height:13px;"></i> Learning Insights
-        </button>
-        <button
-            style="display:flex; align-items:center; gap:7px; padding:5px 14px; border-radius:7px; font-size:13px; font-weight:500; border:none; cursor:pointer; transition:all 0.15s ease; background:transparent; color:#a8a29e;"
-            id="tab-recommendations" onclick="switchTab('recommendations')">
+        <button style="display:none; align-items:center; gap:7px; padding:5px 14px; border-radius:7px; font-size:13px; font-weight:500; border:none; cursor:pointer; transition:all 0.15s ease; background:transparent; color:#a8a29e;"
+            id="tab-recommendations" class="admin-tab-btn" onclick="switchTab('recommendations')">
             <i data-lucide="sparkles" style="width:13px; height:13px;"></i> Recommendations
         </button>
+
+
     </header>
 
     <div class="w-full relative flex-1" style="height: calc(100vh - 44px);">
 
+
+        <!-- View 0: Kids Landing -->
+        <div id="view-landing" class="w-full h-full absolute inset-0 z-20" style="background:#0c0a09; overflow-y:auto;">
+            <div style="max-width:900px; margin:0 auto; padding:40px 24px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:32px;">
+                    <div>
+                        <h1 style="font-size:22px; font-weight:700; color:#fafaf9; display:flex; align-items:center; gap:10px;">
+                            <i data-lucide="users" style="width:24px; height:24px; color:#d946ef;"></i> Children
+                        </h1>
+                        <p style="font-size:12px; color:rgba(255,255,255,0.35); font-family:'Fira Code',monospace; margin-top:6px;">Select a child to view their dashboard</p>
+                    </div>
+                    <button onclick="showAddKidModal()" style="display:flex; align-items:center; gap:8px; padding:10px 20px; background:linear-gradient(135deg,#d946ef,#818cf8); color:white; font-size:13px; font-weight:600; border-radius:10px; border:none; cursor:pointer; box-shadow:0 0 16px rgba(217,70,239,0.25); transition:opacity 0.15s;" onmouseover="this.style.opacity='0.88'" onmouseout="this.style.opacity='1'">
+                        <i data-lucide="plus" style="width:15px; height:15px;"></i> Add Kid
+                    </button>
+                </div>
+                <div id="kids-grid" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(240px, 1fr)); gap:16px;">
+                    <div style="color:rgba(255,255,255,0.25); font-family:'Fira Code',monospace; font-size:13px; text-align:center; padding:40px; grid-column:1/-1;">Loading children...</div>
+                </div>
+            </div>
+        </div>
 
         <!-- View 1: Analytics -->
         <div id="view-analytics" class="w-full h-full flex absolute inset-0 z-10 transition-opacity"
@@ -335,81 +423,112 @@
             </main>
         </div>
 
-        <!-- View 2: Prompt Engine -->
+        <!-- View 2: Prompt Studio -->
         <div id="view-prompts" style="background:#0c0a09;"
             class="w-full h-full flex absolute inset-0 opacity-0 pointer-events-none z-0 transition-opacity">
 
-            <!-- Left Side: Prompt Editor -->
-            <div
-                style="width:50%; height:100%; display:flex; flex-direction:column; border-right:1px solid rgba(255,255,255,0.06); background:#111110;">
-                <div
-                    style="padding:20px 24px; border-bottom:1px solid rgba(255,255,255,0.06); display:flex; justify-content:space-between; align-items:center;">
-                    <div>
-                        <h2
-                            style="font-size:15px; font-weight:700; color:#fafaf9; display:flex; align-items:center; gap:8px; font-family:'Fira Sans',sans-serif;">
-                            <i data-lucide="code-2" style="width:16px;height:16px;color:#d946ef;"></i> Agent Prompt
-                            Compiler
-                        </h2>
-                        <p
-                            style="font-size:11px; color:rgba(255,255,255,0.35); font-family:'Fira Code',monospace; margin-top:4px;">
-                            Select an agent to modify its system prompt.</p>
+            <!-- LEFT: Kid Snapshot (240px) -->
+            <div style="width:240px; min-width:240px; height:100%; border-right:1px solid rgba(255,255,255,0.06); background:#111110; display:flex; flex-direction:column; overflow:hidden;">
+                <div style="padding:14px 16px; border-bottom:1px solid rgba(255,255,255,0.06); flex-shrink:0;">
+                    <div style="font-size:10px; font-family:'Fira Code',monospace; font-weight:700; color:rgba(255,255,255,0.3); text-transform:uppercase; letter-spacing:0.08em; display:flex; align-items:center; gap:5px;">
+                        <i data-lucide="user-round" style="width:11px; height:11px;"></i> Kid Snapshot
                     </div>
-                    <select id="agent-select"
-                        style="background:#0c0a09; border:1px solid rgba(255,255,255,0.1); color:#e8e5e2; font-size:13px; font-weight:600; border-radius:8px; padding:8px 12px; cursor:pointer; outline:none;"
-                        onchange="loadEditorPrompt()">
-                        <option value="router">Initial Chat (Router)</option>
-                        <option value="knowledge">Knowledge Explorer</option>
-                        <option value="brainstorm">Brainstorming Coach</option>
-                    </select>
                 </div>
-
-                <div
-                    style="flex:1; padding:20px 24px; display:flex; flex-direction:column; overflow:hidden; position:relative;">
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-                        <span
-                            style="font-size:11px; font-family:'Fira Code',monospace; font-weight:700; color:rgba(255,255,255,0.3); text-transform:uppercase; letter-spacing:0.08em;"
-                            id="editor-version">Version --</span>
-                        <div
-                            style="display:flex; align-items:center; gap:6px; font-size:11px; font-family:'Fira Code',monospace; color:rgba(255,255,255,0.3);">
-                            <i data-lucide="info" style="width:13px;height:13px;"></i> Plain text markdown
-                        </div>
-                    </div>
-                    <textarea id="prompt-textarea"
-                        style="width:100%; flex:1; padding:16px; background:#0a0908; color:#e8e5e2; font-family:'Fira Code',monospace; font-size:13px; line-height:1.7; border-radius:10px; border:1px solid rgba(255,255,255,0.08); outline:none; resize:none; transition:border-color 0.15s ease;"
-                        spellcheck="false" placeholder="Loading prompt..."
-                        onfocus="this.style.borderColor='rgba(217,70,239,0.4)'; this.style.boxShadow='0 0 0 3px rgba(217,70,239,0.08)';"
-                        onblur="this.style.borderColor='rgba(255,255,255,0.08)'; this.style.boxShadow='none';"></textarea>
+                <div id="kid-snapshot-content" style="flex:1; overflow-y:auto; min-height:0;">
+                    <div style="padding:24px 16px; color:rgba(255,255,255,0.2); font-size:12px; font-family:'Fira Code',monospace; text-align:center;">Loading...</div>
                 </div>
-
-                <div
-                    style="padding:16px 24px; border-top:1px solid rgba(255,255,255,0.06); background:#111110; display:flex; justify-content:space-between; align-items:center;">
-                    <span
-                        style="font-size:12px; font-family:'Fira Code',monospace; color:#4ade80; display:none; align-items:center; gap:6px;"
-                        id="save-success">
-                        <i data-lucide="check-circle" style="width:14px;height:14px;"></i> Saved &amp; Deployed
-                    </span>
-                    <button
-                        style="margin-left:auto; padding:9px 20px; background:linear-gradient(135deg,#d946ef,#818cf8); color:white; font-size:13px; font-weight:600; border-radius:8px; border:none; cursor:pointer; display:flex; align-items:center; gap:8px; transition:opacity 0.15s ease; box-shadow:0 0 16px rgba(217,70,239,0.25);"
-                        onmouseover="this.style.opacity='0.88'" onmouseout="this.style.opacity='1'"
-                        onclick="deployPrompt()">
-                        <i data-lucide="rocket" style="width:14px;height:14px;"></i> Deploy New Revision
+                <div style="padding:12px 14px; border-top:1px solid rgba(255,255,255,0.06); flex-shrink:0;">
+                    <button id="btn-autotune" onclick="autoTune()"
+                        style="width:100%; padding:10px 12px; background:linear-gradient(135deg,rgba(217,70,239,0.18),rgba(129,140,248,0.18)); color:#e879f9; font-size:12px; font-weight:600; border-radius:9px; border:1px solid rgba(217,70,239,0.3); cursor:pointer; display:flex; align-items:center; justify-content:center; gap:7px; transition:all 0.15s ease;"
+                        onmouseover="this.style.background='linear-gradient(135deg,rgba(217,70,239,0.28),rgba(129,140,248,0.28))'"
+                        onmouseout="this.style.background='linear-gradient(135deg,rgba(217,70,239,0.18),rgba(129,140,248,0.18))'">
+                        <i data-lucide="wand-2" style="width:13px; height:13px;"></i> Auto-Tune with AI
                     </button>
                 </div>
             </div>
 
-            <!-- Right Side: Feedback Logs -->
-            <div style="width:50%; height:100%; display:flex; flex-direction:column; background:#0c0a09;">
-                <div style="padding:20px 24px; border-bottom:1px solid rgba(255,255,255,0.06);">
-                    <h2
-                        style="font-size:15px; font-weight:700; color:#fafaf9; display:flex; align-items:center; gap:8px;">
-                        <i data-lucide="zap" style="width:16px;height:16px;color:#facc15;"></i> AI Engagement Insights
-                    </h2>
-                    <p
-                        style="font-size:11px; color:rgba(255,255,255,0.35); font-family:'Fira Code',monospace; margin-top:4px;">
-                        Automatic suggestions from low-engagement sessions.</p>
+            <!-- CENTER: Agent Editor -->
+            <div style="flex:1; height:100%; display:flex; flex-direction:column; overflow:hidden; min-width:0;">
+                <!-- Header + agent tabs -->
+                <div style="padding:14px 20px; border-bottom:1px solid rgba(255,255,255,0.06); background:#111110; flex-shrink:0;">
+                    <div style="display:flex; align-items:center; gap:8px; margin-bottom:12px;">
+                        <i data-lucide="code-2" style="width:15px; height:15px; color:#d946ef;"></i>
+                        <span style="font-size:14px; font-weight:700; color:#fafaf9; font-family:'Fira Sans',sans-serif;">Prompt Studio</span>
+                    </div>
+                    <!-- Agent pill tabs -->
+                    <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                        <button id="agent-tab-router" onclick="selectAgentTab('router')"
+                            style="padding:6px 14px; border-radius:8px; font-size:12px; font-weight:600; cursor:pointer; transition:all 0.15s ease; display:flex; align-items:center; gap:6px; background:rgba(217,70,239,0.15); color:#e879f9; border:1px solid rgba(217,70,239,0.3);">
+                            <i data-lucide="message-circle" style="width:12px; height:12px;"></i> Initial Chat
+                        </button>
+                        <button id="agent-tab-knowledge" onclick="selectAgentTab('knowledge')"
+                            style="padding:6px 14px; border-radius:8px; font-size:12px; font-weight:600; cursor:pointer; transition:all 0.15s ease; display:flex; align-items:center; gap:6px; background:transparent; color:rgba(255,255,255,0.4); border:1px solid rgba(255,255,255,0.08);">
+                            <i data-lucide="book-open" style="width:12px; height:12px;"></i> Knowledge
+                        </button>
+                        <button id="agent-tab-brainstorm" onclick="selectAgentTab('brainstorm')"
+                            style="padding:6px 14px; border-radius:8px; font-size:12px; font-weight:600; cursor:pointer; transition:all 0.15s ease; display:flex; align-items:center; gap:6px; background:transparent; color:rgba(255,255,255,0.4); border:1px solid rgba(255,255,255,0.08);">
+                            <i data-lucide="lightbulb" style="width:12px; height:12px;"></i> Brainstorm
+                        </button>
+                    </div>
+                    <!-- Prompt source badge -->
+                    <div id="prompt-source-badge" style="margin-top:9px; font-size:11px; font-family:'Fira Code',monospace; color:rgba(255,255,255,0.35); display:flex; align-items:center; gap:5px;">
+                        Loading…
+                    </div>
                 </div>
-                <div style="flex:1; padding:20px; overflow-y:auto;" id="suggestions-list">
-                    <!-- Cards injected here -->
+
+                <!-- Textarea area -->
+                <div style="flex:1; padding:16px 20px; display:flex; flex-direction:column; overflow:hidden; min-height:0;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                        <span style="font-size:11px; font-family:'Fira Code',monospace; font-weight:700; color:rgba(255,255,255,0.3); text-transform:uppercase; letter-spacing:0.08em;" id="editor-version">v--</span>
+                        <span style="font-size:11px; font-family:'Fira Code',monospace; color:rgba(255,255,255,0.25);" id="word-count">-- words</span>
+                    </div>
+                    <textarea id="prompt-textarea"
+                        style="width:100%; flex:1; padding:16px; background:#0a0908; color:#e8e5e2; font-family:'Fira Code',monospace; font-size:12.5px; line-height:1.7; border-radius:10px; border:1px solid rgba(255,255,255,0.08); outline:none; resize:none; transition:border-color 0.15s ease; min-height:0;"
+                        spellcheck="false" placeholder="Loading prompt…" oninput="updateWordCount()"
+                        onfocus="this.style.borderColor='rgba(217,70,239,0.4)'; this.style.boxShadow='0 0 0 3px rgba(217,70,239,0.08)';"
+                        onblur="this.style.borderColor='rgba(255,255,255,0.08)'; this.style.boxShadow='none';"></textarea>
+                </div>
+
+                <!-- Footer -->
+                <div style="padding:12px 20px; border-top:1px solid rgba(255,255,255,0.06); background:#111110; display:flex; justify-content:space-between; align-items:center; flex-shrink:0;">
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <button onclick="resetToDefault()"
+                            style="padding:7px 14px; background:transparent; color:rgba(255,255,255,0.4); font-size:12px; font-weight:500; border-radius:7px; border:1px solid rgba(255,255,255,0.1); cursor:pointer; display:flex; align-items:center; gap:6px; transition:all 0.15s ease;"
+                            onmouseover="this.style.borderColor='rgba(255,255,255,0.22)'; this.style.color='rgba(255,255,255,0.7)'"
+                            onmouseout="this.style.borderColor='rgba(255,255,255,0.1)'; this.style.color='rgba(255,255,255,0.4)'">
+                            <i data-lucide="rotate-ccw" style="width:12px; height:12px;"></i> Reset to Default
+                        </button>
+                        <span id="save-success" style="font-size:12px; font-family:'Fira Code',monospace; color:#4ade80; display:none; align-items:center; gap:6px;">
+                            <i data-lucide="check-circle" style="width:13px; height:13px;"></i> Deployed
+                        </span>
+                    </div>
+                    <button onclick="deployPrompt()"
+                        style="padding:8px 20px; background:linear-gradient(135deg,#d946ef,#818cf8); color:white; font-size:13px; font-weight:600; border-radius:8px; border:none; cursor:pointer; display:flex; align-items:center; gap:7px; transition:opacity 0.15s ease; box-shadow:0 0 16px rgba(217,70,239,0.25);"
+                        onmouseover="this.style.opacity='0.88'" onmouseout="this.style.opacity='1'">
+                        <i data-lucide="rocket" style="width:13px; height:13px;"></i> Deploy Revision
+                    </button>
+                </div>
+            </div>
+
+            <!-- RIGHT: Agent Insights (320px) -->
+            <div style="width:320px; min-width:320px; height:100%; border-left:1px solid rgba(255,255,255,0.06); background:#0c0a09; display:flex; flex-direction:column; overflow:hidden;">
+                <div style="padding:16px 20px; border-bottom:1px solid rgba(255,255,255,0.06); flex-shrink:0;">
+                    <h2 style="font-size:14px; font-weight:700; color:#fafaf9; display:flex; align-items:center; gap:7px; margin:0;">
+                        <i data-lucide="zap" style="width:15px; height:15px; color:#facc15;"></i>
+                        <span id="agent-insights-title">Insights: Initial Chat</span>
+                    </h2>
+                    <p style="font-size:11px; color:rgba(255,255,255,0.35); font-family:'Fira Code',monospace; margin-top:4px;">Stats &amp; suggestions for this agent only</p>
+                </div>
+                <!-- Per-agent mini stats -->
+                <div id="agent-stats-container" style="flex-shrink:0; border-bottom:1px solid rgba(255,255,255,0.06);">
+                    <div style="padding:16px; color:rgba(255,255,255,0.2); font-size:12px; font-family:'Fira Code',monospace; text-align:center;">Loading…</div>
+                </div>
+                <!-- Suggestions -->
+                <div style="padding:12px 14px 6px; flex-shrink:0;">
+                    <div style="font-size:10px; font-family:'Fira Code',monospace; font-weight:700; color:rgba(255,255,255,0.3); text-transform:uppercase; letter-spacing:0.08em;">Improvement Suggestions</div>
+                </div>
+                <div style="flex:1; overflow-y:auto; padding:0 14px 14px;" id="suggestions-list">
+                    <div style="padding:12px 0; color:rgba(255,255,255,0.2); font-size:12px; font-family:'Fira Code',monospace; text-align:center;">Loading…</div>
                 </div>
             </div>
 
@@ -425,12 +544,8 @@
                     <div>
                         <h2
                             style="font-size:20px; font-weight:700; color:#fafaf9; display:flex; align-items:center; gap:10px;">
-                            <i data-lucide="user-round" style="width:22px;height:22px;color:#d946ef;"></i> Kid #1 —
-                            Learning Profile
+                            <i data-lucide="user-round" style="width:22px;height:22px;color:#d946ef;"></i> Learning Profile
                         </h2>
-                        <p
-                            style="font-size:12px; color:rgba(255,255,255,0.35); font-family:'Fira Code',monospace; margin-top:6px;">
-                            Auto-generated from conversation history · User ID: <span id="profile-user-id-label">—</span></p>
                     </div>
                     <div style="display:flex; gap:10px;">
                         <button id="btn-gen-persona" onclick="generatePersona()"
@@ -447,7 +562,7 @@
                     </div>
                 </div>
 
-                <!-- AI Persona Card -->
+                <!-- Section 2: AI Persona Card -->
                 <div id="persona-card"
                     style="margin-bottom:20px; padding:22px; border-radius:16px; background:linear-gradient(135deg,rgba(217,70,239,0.06),rgba(129,140,248,0.06)); border:1px solid rgba(217,70,239,0.15); display:none;">
                     <div
@@ -458,28 +573,103 @@
                     <div id="personality-tags" style="display:flex; flex-wrap:wrap; gap:8px; margin-top:14px;"></div>
                 </div>
 
-                <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px;">
-                    <!-- Key Strengths -->
-                    <div id="strengths-card"
-                        style="padding:20px; background:rgba(255,255,255,0.03); border-radius:14px; border:1px solid rgba(255,255,255,0.07); display:none;">
-                        <div
-                            style="font-size:11px; font-family:'Fira Code',monospace; font-weight:700; color:#4ade80; text-transform:uppercase; letter-spacing:0.08em; margin-bottom:14px; display:flex; align-items:center; gap:6px;">
-                            <i data-lucide="zap" style="width:13px;height:13px;"></i> Key Strengths
+                <!-- Section 3: At a Glance -->
+                <div style="font-size:11px; font-family:'Fira Code',monospace; font-weight:700; color:rgba(255,255,255,0.4); text-transform:uppercase; letter-spacing:0.08em; margin-bottom:10px;">At a Glance</div>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:24px;">
+                    <!-- Engagement Summary -->
+                    <div style="padding:20px; background:rgba(255,255,255,0.03); border-radius:14px; border:1px solid rgba(255,255,255,0.07);">
+                        <div style="font-size:11px; font-family:'Fira Code',monospace; font-weight:700; color:#22d3ee; text-transform:uppercase; letter-spacing:0.08em; margin-bottom:6px; display:flex; align-items:center; gap:6px;">
+                            <i data-lucide="activity" style="width:13px;height:13px;"></i> Engagement Summary
                         </div>
-                        <ul id="strengths-list" style="display:flex; flex-direction:column; gap:8px;"></ul>
+                        <p style="font-size:12px; color:rgba(255,255,255,0.4); margin-bottom:14px; line-height:1.5;">
+                            Average engagement across recent sessions</p>
+                        <div id="insights-engagement" style="font-size:13px; color:rgba(255,255,255,0.3); font-family:'Fira Code',monospace;">
+                            Loading engagement data...</div>
                     </div>
-                    <!-- Topic Gaps -->
-                    <div id="gaps-card"
-                        style="padding:20px; background:rgba(255,255,255,0.03); border-radius:14px; border:1px solid rgba(255,255,255,0.07); display:none;">
-                        <div
-                            style="font-size:11px; font-family:'Fira Code',monospace; font-weight:700; color:#facc15; text-transform:uppercase; letter-spacing:0.08em; margin-bottom:14px; display:flex; align-items:center; gap:6px;">
-                            <i data-lucide="compass" style="width:13px;height:13px;"></i> Unexplored Topics
+                    <!-- Exploration Style -->
+                    <div style="padding:20px; background:rgba(255,255,255,0.03); border-radius:14px; border:1px solid rgba(255,255,255,0.07);">
+                        <div style="font-size:11px; font-family:'Fira Code',monospace; font-weight:700; color:#818cf8; text-transform:uppercase; letter-spacing:0.08em; margin-bottom:6px; display:flex; align-items:center; gap:6px;">
+                            <i data-lucide="compass" style="width:13px;height:13px;"></i> Exploration Style
                         </div>
-                        <div id="gaps-list" style="display:flex; flex-wrap:wrap; gap:8px;"></div>
+                        <p style="font-size:12px; color:rgba(255,255,255,0.4); margin-bottom:14px; line-height:1.5;">
+                            Whether your child explores broadly or dives deep</p>
+                        <div id="insights-exploration" style="font-size:13px; color:rgba(255,255,255,0.3); font-family:'Fira Code',monospace;">
+                            Loading exploration style...</div>
+                        <p style="font-size:11px; color:rgba(255,255,255,0.25); margin-top:14px; font-style:italic; line-height:1.5; border-top:1px solid rgba(255,255,255,0.06); padding-top:10px;">
+                            Tip: Both styles are great! Broad explorers benefit from connections between topics, while deep divers love extra detail and challenges.</p>
                     </div>
                 </div>
 
-                <!-- All Facts -->
+                <!-- Section 4: Interests & Strengths -->
+                <div style="font-size:11px; font-family:'Fira Code',monospace; font-weight:700; color:rgba(255,255,255,0.4); text-transform:uppercase; letter-spacing:0.08em; margin-bottom:10px;">Interests &amp; Strengths</div>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:24px;">
+                    <!-- Top Interests -->
+                    <div style="padding:20px; background:rgba(255,255,255,0.03); border-radius:14px; border:1px solid rgba(255,255,255,0.07);">
+                        <div style="font-size:11px; font-family:'Fira Code',monospace; font-weight:700; color:#e879f9; text-transform:uppercase; letter-spacing:0.08em; margin-bottom:6px; display:flex; align-items:center; gap:6px;">
+                            <i data-lucide="star" style="width:13px;height:13px;"></i> Top Interests
+                        </div>
+                        <p style="font-size:12px; color:rgba(255,255,255,0.4); margin-bottom:14px; line-height:1.5;">
+                            Topics your child returns to most often</p>
+                        <div id="insights-interests" style="font-size:13px; color:rgba(255,255,255,0.3); font-family:'Fira Code',monospace;">
+                            Loading interests...</div>
+                        <p style="font-size:11px; color:rgba(255,255,255,0.25); margin-top:14px; font-style:italic; line-height:1.5; border-top:1px solid rgba(255,255,255,0.06); padding-top:10px;">
+                            Tip: Consider exploring these topics together through books, videos, or activities!</p>
+                    </div>
+                    <!-- Strengths & Gaps -->
+                    <div id="strengths-card" style="padding:20px; background:rgba(255,255,255,0.03); border-radius:14px; border:1px solid rgba(255,255,255,0.07);">
+                        <div style="font-size:11px; font-family:'Fira Code',monospace; font-weight:700; color:#4ade80; text-transform:uppercase; letter-spacing:0.08em; margin-bottom:14px; display:flex; align-items:center; gap:6px;">
+                            <i data-lucide="zap" style="width:13px;height:13px;"></i> Strengths &amp; Gaps
+                        </div>
+                        <div style="margin-bottom:14px;">
+                            <div style="font-size:11px; font-family:'Fira Code',monospace; color:rgba(255,255,255,0.35); margin-bottom:8px;">Key Strengths</div>
+                            <ul id="strengths-list" style="display:flex; flex-direction:column; gap:8px;"></ul>
+                        </div>
+                        <div style="border-top:1px solid rgba(255,255,255,0.06); padding-top:14px;">
+                            <div style="font-size:11px; font-family:'Fira Code',monospace; color:rgba(255,255,255,0.35); margin-bottom:8px;">Unexplored Topics</div>
+                            <div id="gaps-list" style="display:flex; flex-wrap:wrap; gap:8px;"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section 5: Cognitive Patterns -->
+                <div style="font-size:11px; font-family:'Fira Code',monospace; font-weight:700; color:rgba(255,255,255,0.4); text-transform:uppercase; letter-spacing:0.08em; margin-bottom:10px;">Cognitive Patterns</div>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:24px;">
+                    <!-- Thinking Patterns -->
+                    <div style="padding:20px; background:rgba(255,255,255,0.03); border-radius:14px; border:1px solid rgba(255,255,255,0.07);">
+                        <div style="font-size:11px; font-family:'Fira Code',monospace; font-weight:700; color:#4ade80; text-transform:uppercase; letter-spacing:0.08em; margin-bottom:6px; display:flex; align-items:center; gap:6px;">
+                            <i data-lucide="brain" style="width:13px;height:13px;"></i> Thinking Patterns
+                        </div>
+                        <p style="font-size:12px; color:rgba(255,255,255,0.4); margin-bottom:14px; line-height:1.5;">
+                            Indicators of reasoning, curiosity, and reflective thinking in your child's conversations.</p>
+                        <div id="insights-thinking" style="font-size:13px; color:rgba(255,255,255,0.3); font-family:'Fira Code',monospace;">
+                            Loading thinking patterns...</div>
+                        <p style="font-size:11px; color:rgba(255,255,255,0.25); margin-top:14px; font-style:italic; line-height:1.5; border-top:1px solid rgba(255,255,255,0.06); padding-top:10px;">
+                            Tip: Encourage "because" and "what if" thinking by asking your child open-ended questions at home!</p>
+                    </div>
+                    <!-- Persistence & Challenge -->
+                    <div style="padding:20px; background:rgba(255,255,255,0.03); border-radius:14px; border:1px solid rgba(255,255,255,0.07);">
+                        <div style="font-size:11px; font-family:'Fira Code',monospace; font-weight:700; color:#fb923c; text-transform:uppercase; letter-spacing:0.08em; margin-bottom:6px; display:flex; align-items:center; gap:6px;">
+                            <i data-lucide="flame" style="width:13px;height:13px;"></i> Persistence &amp; Challenge
+                        </div>
+                        <p style="font-size:12px; color:rgba(255,255,255,0.4); margin-bottom:14px; line-height:1.5;">
+                            How your child responds when things get tricky. Higher scores mean more stick-with-it attitude.</p>
+                        <div id="insights-persistence" style="font-size:13px; color:rgba(255,255,255,0.3); font-family:'Fira Code',monospace;">
+                            Loading persistence data...</div>
+                        <p style="font-size:11px; color:rgba(255,255,255,0.25); margin-top:14px; font-style:italic; line-height:1.5; border-top:1px solid rgba(255,255,255,0.06); padding-top:10px;">
+                            Tip: Praise effort over results. Saying "I love how you kept trying!" builds resilience over time.</p>
+                    </div>
+                </div>
+
+                <!-- Section 6: Safety Alerts -->
+                <div style="padding:20px; background:rgba(255,255,255,0.03); border-radius:14px; border:1px solid rgba(255,255,255,0.07); margin-bottom:24px;">
+                    <div style="font-size:11px; font-family:'Fira Code',monospace; font-weight:700; color:#f87171; text-transform:uppercase; letter-spacing:0.08em; margin-bottom:6px; display:flex; align-items:center; gap:6px;">
+                        <i data-lucide="shield-alert" style="width:13px;height:13px;"></i> Safety Alerts
+                    </div>
+                    <div id="insights-safety" style="font-size:13px; color:rgba(255,255,255,0.3); font-family:'Fira Code',monospace;">
+                        Loading safety data...</div>
+                </div>
+
+                <!-- Section 7: All Learned Facts -->
                 <div
                     style="padding:20px; background:rgba(255,255,255,0.03); border-radius:14px; border:1px solid rgba(255,255,255,0.07);">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
@@ -531,105 +721,36 @@
             </div>
         </div>
 
-        <!-- View 4: Learning Insights -->
-        <div id="view-insights" style="background:#0c0a09;"
-            class="w-full h-full absolute inset-0 opacity-0 pointer-events-none z-0 transition-opacity overflow-y-auto">
-            <div style="max-width:960px; margin:0 auto; padding:32px 24px;">
-
-                <!-- Header -->
-                <div style="margin-bottom:28px;">
-                    <h2 style="font-size:20px; font-weight:700; color:#fafaf9; display:flex; align-items:center; gap:10px;">
-                        <i data-lucide="lightbulb" style="width:22px;height:22px;color:#facc15;"></i> Learning Insights
-                    </h2>
-                    <p style="font-size:12px; color:rgba(255,255,255,0.35); font-family:'Fira Code',monospace; margin-top:6px;">
-                        Behavioral, thinking, and engagement patterns from conversation analysis</p>
-                </div>
-
-                <!-- Grid layout for insight cards -->
-                <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
-
-                    <!-- 1. Engagement Overview -->
-                    <div style="padding:20px; background:rgba(255,255,255,0.03); border-radius:14px; border:1px solid rgba(255,255,255,0.07); grid-column:1 / -1;">
-                        <div style="font-size:11px; font-family:'Fira Code',monospace; font-weight:700; color:#22d3ee; text-transform:uppercase; letter-spacing:0.08em; margin-bottom:6px; display:flex; align-items:center; gap:6px;">
-                            <i data-lucide="activity" style="width:13px;height:13px;"></i> Engagement Overview
-                        </div>
-                        <p style="font-size:12px; color:rgba(255,255,255,0.4); margin-bottom:14px; line-height:1.5;">
-                            How engaged your child has been across recent sessions. Green is highly engaged, yellow is moderate, and red signals low engagement.</p>
-                        <div id="insights-engagement" style="font-size:13px; color:rgba(255,255,255,0.3); font-family:'Fira Code',monospace;">
-                            Loading engagement data...</div>
-                    </div>
-
-                    <!-- 2. Top Interests -->
-                    <div style="padding:20px; background:rgba(255,255,255,0.03); border-radius:14px; border:1px solid rgba(255,255,255,0.07);">
-                        <div style="font-size:11px; font-family:'Fira Code',monospace; font-weight:700; color:#e879f9; text-transform:uppercase; letter-spacing:0.08em; margin-bottom:6px; display:flex; align-items:center; gap:6px;">
-                            <i data-lucide="star" style="width:13px;height:13px;"></i> Top Interests
-                        </div>
-                        <p style="font-size:12px; color:rgba(255,255,255,0.4); margin-bottom:14px; line-height:1.5;">
-                            Topics your child returns to most often, ranked by frequency and engagement.</p>
-                        <div id="insights-interests" style="font-size:13px; color:rgba(255,255,255,0.3); font-family:'Fira Code',monospace;">
-                            Loading interests...</div>
-                        <p style="font-size:11px; color:rgba(255,255,255,0.25); margin-top:14px; font-style:italic; line-height:1.5; border-top:1px solid rgba(255,255,255,0.06); padding-top:10px;">
-                            Tip: Consider exploring these topics together through books, videos, or activities!</p>
-                    </div>
-
-                    <!-- 3. Exploration Style -->
-                    <div style="padding:20px; background:rgba(255,255,255,0.03); border-radius:14px; border:1px solid rgba(255,255,255,0.07);">
-                        <div style="font-size:11px; font-family:'Fira Code',monospace; font-weight:700; color:#818cf8; text-transform:uppercase; letter-spacing:0.08em; margin-bottom:6px; display:flex; align-items:center; gap:6px;">
-                            <i data-lucide="compass" style="width:13px;height:13px;"></i> Exploration Style
-                        </div>
-                        <p style="font-size:12px; color:rgba(255,255,255,0.4); margin-bottom:14px; line-height:1.5;">
-                            Whether your child tends to explore many topics broadly or dive deep into fewer ones.</p>
-                        <div id="insights-exploration" style="font-size:13px; color:rgba(255,255,255,0.3); font-family:'Fira Code',monospace;">
-                            Loading exploration style...</div>
-                        <p style="font-size:11px; color:rgba(255,255,255,0.25); margin-top:14px; font-style:italic; line-height:1.5; border-top:1px solid rgba(255,255,255,0.06); padding-top:10px;">
-                            Tip: Both styles are great! Broad explorers benefit from connections between topics, while deep divers love extra detail and challenges.</p>
-                    </div>
-
-                    <!-- 4. Thinking Patterns -->
-                    <div style="padding:20px; background:rgba(255,255,255,0.03); border-radius:14px; border:1px solid rgba(255,255,255,0.07);">
-                        <div style="font-size:11px; font-family:'Fira Code',monospace; font-weight:700; color:#4ade80; text-transform:uppercase; letter-spacing:0.08em; margin-bottom:6px; display:flex; align-items:center; gap:6px;">
-                            <i data-lucide="brain" style="width:13px;height:13px;"></i> Thinking Patterns
-                        </div>
-                        <p style="font-size:12px; color:rgba(255,255,255,0.4); margin-bottom:14px; line-height:1.5;">
-                            Indicators of reasoning, curiosity, and reflective thinking in your child's conversations.</p>
-                        <div id="insights-thinking" style="font-size:13px; color:rgba(255,255,255,0.3); font-family:'Fira Code',monospace;">
-                            Loading thinking patterns...</div>
-                        <p style="font-size:11px; color:rgba(255,255,255,0.25); margin-top:14px; font-style:italic; line-height:1.5; border-top:1px solid rgba(255,255,255,0.06); padding-top:10px;">
-                            Tip: Encourage "because" and "what if" thinking by asking your child open-ended questions at home!</p>
-                    </div>
-
-                    <!-- 5. Persistence & Challenge -->
-                    <div style="padding:20px; background:rgba(255,255,255,0.03); border-radius:14px; border:1px solid rgba(255,255,255,0.07);">
-                        <div style="font-size:11px; font-family:'Fira Code',monospace; font-weight:700; color:#fb923c; text-transform:uppercase; letter-spacing:0.08em; margin-bottom:6px; display:flex; align-items:center; gap:6px;">
-                            <i data-lucide="flame" style="width:13px;height:13px;"></i> Persistence & Challenge
-                        </div>
-                        <p style="font-size:12px; color:rgba(255,255,255,0.4); margin-bottom:14px; line-height:1.5;">
-                            How your child responds when things get tricky. Higher scores mean more stick-with-it attitude.</p>
-                        <div id="insights-persistence" style="font-size:13px; color:rgba(255,255,255,0.3); font-family:'Fira Code',monospace;">
-                            Loading persistence data...</div>
-                        <p style="font-size:11px; color:rgba(255,255,255,0.25); margin-top:14px; font-style:italic; line-height:1.5; border-top:1px solid rgba(255,255,255,0.06); padding-top:10px;">
-                            Tip: Praise effort over results. Saying "I love how you kept trying!" builds resilience over time.</p>
-                    </div>
-
-                    <!-- 6. Safety Alerts -->
-                    <div style="padding:20px; background:rgba(255,255,255,0.03); border-radius:14px; border:1px solid rgba(255,255,255,0.07); grid-column:1 / -1;">
-                        <div style="font-size:11px; font-family:'Fira Code',monospace; font-weight:700; color:#f87171; text-transform:uppercase; letter-spacing:0.08em; margin-bottom:6px; display:flex; align-items:center; gap:6px;">
-                            <i data-lucide="shield-alert" style="width:13px;height:13px;"></i> Safety Alerts
-                        </div>
-                        <p style="font-size:12px; color:rgba(255,255,255,0.4); margin-bottom:14px; line-height:1.5;">
-                            Any moments flagged as potentially concerning during conversations.</p>
-                        <div id="insights-safety" style="font-size:13px; color:rgba(255,255,255,0.3); font-family:'Fira Code',monospace;">
-                            Loading safety data...</div>
-                    </div>
-
-                </div>
-            </div>
-        </div>
 
     </div>
 
     <script>
         lucide.createIcons();
+
+        // ---- Landing vs Kid Dashboard view state ----
+        function showLanding() {
+            document.getElementById('view-landing').style.display = 'block';
+            ALL_VIEWS.forEach(v => {
+                const view = document.getElementById('view-' + v);
+                if (view) { view.classList.add('opacity-0', 'pointer-events-none'); view.classList.remove('z-10'); }
+            });
+            document.querySelectorAll('.admin-tab-btn').forEach(btn => btn.style.display = 'none');
+            document.getElementById('btn-back-to-kids').style.display = 'none';
+            document.getElementById('header-kid-name').style.display = 'none';
+            document.getElementById('header-divider').style.display = 'none';
+        }
+
+        function showKidDashboard(profile) {
+            adminUserId = profile.user_id;
+            document.getElementById('view-landing').style.display = 'none';
+            document.querySelectorAll('.admin-tab-btn').forEach(btn => btn.style.display = 'flex');
+            document.getElementById('btn-back-to-kids').style.display = 'flex';
+            document.getElementById('header-kid-name').style.display = 'inline';
+            document.getElementById('header-kid-name').textContent = profile.display_name;
+            document.getElementById('header-divider').style.display = 'block';
+            switchTab('analytics');
+            loadSessions();
+        }
 
         // Formatter Utilities
         function formatDate(ds) {
@@ -654,7 +775,7 @@
         // Fetch Overview
         async function loadSessions() {
             try {
-                const res = await fetch('/api/conversations');
+                const res = await fetch('/api/conversations/' + adminUserId);
                 const sessions = await res.json();
 
                 const listEl = document.getElementById('session-list');
@@ -776,14 +897,25 @@
                             <span class="badge" style="background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1); color:rgba(255,255,255,0.55); cursor:default;"><i data-lucide="hash" style="width:12px;height:12px;margin-right:4px;"></i>${meta.message_count} messages</span>
                             <span class="badge" style="background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1); color:rgba(255,255,255,0.55); cursor:default;"><i data-lucide="timer" style="width:12px;height:12px;margin-right:4px;"></i>${formatDuration(meta.started_at, meta.last_activity)}</span>
                         </div>
-                        ${displaySummary}
-                        ${improvementHtml}
-                        ${userFactsHtml}
+                        ${(displaySummary || improvementHtml || userFactsHtml) ? `
+                        <details style="margin-top:14px;" ${meta.title ? '' : 'open'}>
+                            <summary style="cursor:pointer; display:flex; align-items:center; gap:8px; padding:10px 14px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:8px; font-size:11px; font-family:'Fira Code',monospace; font-weight:700; color:rgba(255,255,255,0.55); text-transform:uppercase; letter-spacing:0.06em; list-style:none; user-select:none;">
+                                <i data-lucide="sparkles" style="width:13px;height:13px;color:#a78bfa;flex-shrink:0;"></i>
+                                <span style="flex:1;">AI Analysis</span>
+                                <span style="font-size:10px; opacity:0.5; font-weight:400;">click to expand / collapse</span>
+                            </summary>
+                            <div style="padding-top:12px;">
+                                ${displaySummary}
+                                ${improvementHtml}
+                                ${userFactsHtml}
+                            </div>
+                        </details>
+                        ` : ''}
                     </div>
                 `;
 
-                // Fetch Lines
-                const res = await fetch(`/api/conversations/${sessionId}`);
+                // Fetch Lines (uses /api/sessions/ to avoid route collision with /api/conversations/:userId)
+                const res = await fetch(`/api/sessions/${sessionId}`);
                 const history = await res.json();
 
                 const area = document.getElementById('transcript-area');
@@ -795,6 +927,26 @@
                 }
 
                 history.forEach(msg => {
+                    // System events: render as a slim divider instead of a chat bubble
+                    if (msg.role === 'system') {
+                        const divider = document.createElement('div');
+                        divider.style.cssText = 'display:flex; align-items:center; gap:10px; margin:14px 0; opacity:0.45;';
+                        const label = msg.content.startsWith('[AGENT_SWITCH]')
+                            ? msg.content.replace('[AGENT_SWITCH] ', '🔄 ')
+                            : msg.content.replace(/^\[.*?\]\s*/, '');
+                        const color = msg.content.includes('DISENGAGED') ? '#ef4444'
+                            : msg.content.includes('RESPONDED') ? '#22c55e'
+                            : msg.content.includes('SWITCH') ? '#a78bfa'
+                            : '#6b7280';
+                        divider.innerHTML = `
+                            <div style="flex:1; height:1px; background:${color}22;"></div>
+                            <span style="font-size:10px; font-family:'Fira Code',monospace; color:${color}; white-space:nowrap;">${label}</span>
+                            <div style="flex:1; height:1px; background:${color}22;"></div>
+                        `;
+                        area.appendChild(divider);
+                        return;
+                    }
+
                     const wrap = document.createElement('div');
                     wrap.className = `flex w-full mb-3 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`;
 
@@ -829,7 +981,11 @@
             }
 
             try {
-                const res = await fetch(`/api/conversations/${sessionId}/summarize`, { method: 'POST' });
+                const res = await fetch(`/api/conversations/${sessionId}/summarize`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ user_id: adminUserId })
+                });
                 const json = await res.json();
 
                 if (json.success) {
@@ -860,114 +1016,379 @@
 
 
         // --- View Switching ---
-        const ALL_VIEWS = ['analytics', 'prompts', 'profile', 'insights', 'recommendations'];
+        const ALL_VIEWS = ['analytics', 'prompts', 'profile', 'recommendations'];
         function switchTab(viewName) {
             ALL_VIEWS.forEach(v => {
                 const tab = document.getElementById('tab-' + v);
                 const view = document.getElementById('view-' + v);
-                if (tab) tab.className = "nav-tab opacity-60 hover:opacity-100 text-white font-medium text-sm flex items-center gap-2 h-full border-b-2 border-transparent transition-all";
+                if (tab) {
+                    tab.style.background = 'transparent';
+                    tab.style.color = '#a8a29e';
+                }
                 if (view) { view.classList.add('opacity-0', 'pointer-events-none'); view.classList.remove('z-10'); }
             });
-            document.getElementById('tab-' + viewName).className = "nav-tab opacity-100 text-white font-medium text-sm flex items-center gap-2 h-full border-b-2 border-blue-400 transition-all";
+            const activeTab = document.getElementById('tab-' + viewName);
+            if (activeTab) {
+                activeTab.style.background = 'rgba(255,255,255,0.1)';
+                activeTab.style.color = '#fafaf9';
+            }
             document.getElementById('view-' + viewName).classList.remove('opacity-0', 'pointer-events-none');
             document.getElementById('view-' + viewName).classList.add('z-10');
 
             if (viewName === 'prompts') loadPromptEngine();
             if (viewName === 'profile') loadChildProfile();
-            if (viewName === 'insights') loadLearningInsights();
             if (viewName === 'recommendations') loadRecommendations();
         }
 
-        // --- Prompt Engine Logic ---
+        // --- Prompt Studio Logic ---
         let loadedPrompts = [];
+        let studioAgent = 'router'; // currently active agent tab
+
+        const AGENT_TAB_META = {
+            router:     { label: 'Initial Chat',        insightsLabel: 'Insights: Initial Chat' },
+            knowledge:  { label: 'Knowledge Explorer',  insightsLabel: 'Insights: Knowledge Explorer' },
+            brainstorm: { label: 'Brainstorming Coach', insightsLabel: 'Insights: Brainstorming Coach' }
+        };
 
         async function loadPromptEngine() {
             try {
-                // Fetch Prompts
-                const pRes = await fetch('/api/prompts');
+                // Load prompts + kid snapshot in parallel
+                const [pRes] = await Promise.all([
+                    fetch('/api/prompts?userId=' + adminUserId),
+                    loadKidSnapshot()
+                ]);
                 const pData = await pRes.json();
                 if (pData.success) {
                     loadedPrompts = pData.prompts;
-                    loadEditorPrompt();
                 }
-
-                // Fetch Suggestions
-                const sRes = await fetch('/api/suggestions');
-                const sData = await sRes.json();
-                if (sData.success) {
-                    renderSuggestions(sData.suggestions);
-                }
+                // Render editor for current tab
+                renderEditorForAgent(studioAgent);
+                // Load right-panel for current tab
+                await loadAgentInsights(studioAgent);
             } catch (e) { console.error(e); }
         }
 
-        function loadEditorPrompt() {
-            const agentId = document.getElementById('agent-select').value;
+        function selectAgentTab(agentId) {
+            studioAgent = agentId;
+            // Update tab visual states
+            ['router', 'knowledge', 'brainstorm'].forEach(id => {
+                const btn = document.getElementById('agent-tab-' + id);
+                if (!btn) return;
+                if (id === agentId) {
+                    btn.style.background = 'rgba(217,70,239,0.15)';
+                    btn.style.color = '#e879f9';
+                    btn.style.borderColor = 'rgba(217,70,239,0.3)';
+                } else {
+                    btn.style.background = 'transparent';
+                    btn.style.color = 'rgba(255,255,255,0.4)';
+                    btn.style.borderColor = 'rgba(255,255,255,0.08)';
+                }
+            });
+            // Update right-panel title
+            const titleEl = document.getElementById('agent-insights-title');
+            if (titleEl) titleEl.textContent = AGENT_TAB_META[agentId]?.insightsLabel || 'Insights';
+            // Render editor
+            renderEditorForAgent(agentId);
+            // Reload right panel
+            loadAgentInsights(agentId);
+        }
+
+        function renderEditorForAgent(agentId) {
             const prompt = loadedPrompts.find(p => p.agent_id === agentId);
             const ta = document.getElementById('prompt-textarea');
             const vLabel = document.getElementById('editor-version');
-
             if (prompt) {
                 ta.value = prompt.prompt_text;
-                vLabel.textContent = "Version " + prompt.version;
+                vLabel.textContent = 'v' + prompt.version;
             } else {
-                ta.value = "No prompt found for this agent.";
-                vLabel.textContent = "Version 0";
+                ta.value = '';
+                vLabel.textContent = 'v--';
+            }
+            updateWordCount();
+            updateSourceBadge(prompt);
+        }
+
+        function updateSourceBadge(prompt) {
+            const el = document.getElementById('prompt-source-badge');
+            if (!el) return;
+            if (prompt && prompt.user_id) {
+                el.innerHTML = '<span style="color:#e879f9; font-size:9px;">●</span> Custom prompt for this child';
+                el.style.color = '#e879f9';
+            } else {
+                el.innerHTML = '<span style="color:rgba(255,255,255,0.25); font-size:9px;">○</span> Using global default';
+                el.style.color = 'rgba(255,255,255,0.35)';
             }
         }
 
+        function updateWordCount() {
+            const ta = document.getElementById('prompt-textarea');
+            const el = document.getElementById('word-count');
+            if (!ta || !el) return;
+            const words = ta.value.trim() === '' ? 0 : ta.value.trim().split(/\s+/).length;
+            el.textContent = words + ' words';
+        }
+
         async function deployPrompt() {
-            const agentId = document.getElementById('agent-select').value;
+            const agentId = studioAgent;
             const text = document.getElementById('prompt-textarea').value;
             try {
-                const res = await fetch('/api/prompts/' + agentId, {
+                const res = await fetch('/api/prompts/' + adminUserId + '/' + agentId, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ prompt_text: text })
                 });
                 const data = await res.json();
                 if (data.success) {
-                    // Flash success
                     const succ = document.getElementById('save-success');
-                    succ.classList.remove('hidden');
-                    setTimeout(() => succ.classList.add('hidden'), 3000);
-
-                    // Reload active cache
-                    loadPromptEngine();
+                    succ.style.display = 'flex';
+                    setTimeout(() => succ.style.display = 'none', 3000);
+                    // Reload prompts to refresh badge + version
+                    const pRes = await fetch('/api/prompts?userId=' + adminUserId);
+                    const pData = await pRes.json();
+                    if (pData.success) loadedPrompts = pData.prompts;
+                    renderEditorForAgent(agentId);
                 } else {
-                    alert("Failed to save: " + data.error);
+                    alert('Failed to save: ' + data.error);
                 }
-            } catch (e) { console.error(e); alert("Failed to deploy!"); }
+            } catch (e) { console.error(e); alert('Failed to deploy!'); }
+        }
+
+        async function resetToDefault() {
+            const agentNames = { router: 'Initial Chat', knowledge: 'Knowledge Explorer', brainstorm: 'Brainstorming Coach' };
+            if (!confirm('Reset "' + (agentNames[studioAgent] || studioAgent) + '" to the global default for this child? Their custom prompt will be removed.')) return;
+            try {
+                const res = await fetch('/api/prompts/' + adminUserId + '/' + studioAgent, { method: 'DELETE' });
+                const data = await res.json();
+                if (data.success) {
+                    const pRes = await fetch('/api/prompts?userId=' + adminUserId);
+                    const pData = await pRes.json();
+                    if (pData.success) loadedPrompts = pData.prompts;
+                    renderEditorForAgent(studioAgent);
+                }
+            } catch (e) { console.error(e); alert('Failed to reset.'); }
+        }
+
+        // --- Kid Snapshot (left panel) ---
+        async function loadKidSnapshot() {
+            const el = document.getElementById('kid-snapshot-content');
+            if (!el) return;
+            try {
+                const [intRes, engRes, behRes, memRes] = await Promise.all([
+                    fetch('/api/analytics/interests/' + adminUserId),
+                    fetch('/api/analytics/engagement/' + adminUserId),
+                    fetch('/api/analytics/behavior/' + adminUserId),
+                    fetch('/api/memory-all/' + adminUserId)
+                ]);
+                const intData = await intRes.json();
+                const engData = await engRes.json();
+                const behData = await behRes.json();
+                const memData = await memRes.json();
+
+                const kidProfile = allProfiles.find(p => p.user_id === adminUserId);
+                const initials = kidProfile ? kidProfile.display_name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2) : '?';
+                const avatarColor = kidProfile ? (kidProfile.avatar_color || '#d946ef') : '#d946ef';
+
+                // Avg engagement
+                let engScore = null, engColor = '#a8a29e', engBg = 'rgba(255,255,255,0.06)', engBorder = 'rgba(255,255,255,0.1)';
+                if (engData.success && engData.trends && engData.trends.length > 0) {
+                    const scores = engData.trends.map(t => t.engagement_score).filter(s => s != null);
+                    if (scores.length > 0) {
+                        engScore = (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(1);
+                        if (engScore >= 7) { engColor = '#4ade80'; engBg = 'rgba(34,197,94,0.1)'; engBorder = 'rgba(34,197,94,0.2)'; }
+                        else if (engScore >= 4) { engColor = '#facc15'; engBg = 'rgba(234,179,8,0.1)'; engBorder = 'rgba(234,179,8,0.2)'; }
+                        else { engColor = '#f87171'; engBg = 'rgba(239,68,68,0.1)'; engBorder = 'rgba(239,68,68,0.2)'; }
+                    }
+                }
+
+                // Exploration style
+                let styleLabel = null;
+                if (behData.success && behData.summary && behData.summary.predominant_exploration_style) {
+                    styleLabel = behData.summary.predominant_exploration_style === 'deep_diver' ? 'Deep Diver' : 'Broad Explorer';
+                }
+
+                const interests = (intData.success && intData.interests) ? intData.interests.slice(0, 5) : [];
+                const facts = (memData.memories || []).slice(0, 5);
+
+                let html = `
+                    <div style="display:flex; flex-direction:column; align-items:center; gap:10px; padding:18px 14px 14px; border-bottom:1px solid rgba(255,255,255,0.06);">
+                        <div style="width:48px; height:48px; border-radius:13px; background:linear-gradient(135deg,${avatarColor},${avatarColor}88); display:flex; align-items:center; justify-content:center; font-size:18px; font-weight:700; color:white; flex-shrink:0;">${initials}</div>
+                        <div style="text-align:center;">
+                            <div style="font-size:14px; font-weight:700; color:#fafaf9;">${kidProfile ? kidProfile.display_name : 'Kid'}</div>
+                            ${kidProfile && kidProfile.age ? `<div style="font-size:11px; color:rgba(255,255,255,0.35); font-family:'Fira Code',monospace; margin-top:2px;">${kidProfile.age} yrs old</div>` : ''}
+                        </div>
+                        ${engScore ? `<div style="display:flex; align-items:center; gap:5px; padding:4px 12px; border-radius:99px; background:${engBg}; border:1px solid ${engBorder};">
+                            <span style="font-size:16px; font-weight:700; color:${engColor}; font-family:'Fira Code',monospace;">${engScore}</span>
+                            <span style="font-size:10px; color:rgba(255,255,255,0.4); font-family:'Fira Code',monospace;">avg score</span>
+                        </div>` : ''}
+                        ${styleLabel ? `<div style="font-size:11px; padding:3px 10px; border-radius:6px; background:rgba(129,140,248,0.1); color:#818cf8; border:1px solid rgba(129,140,248,0.2); font-family:'Fira Code',monospace;">${styleLabel}</div>` : ''}
+                    </div>`;
+
+                if (interests.length > 0) {
+                    html += `<div style="padding:12px 14px; border-bottom:1px solid rgba(255,255,255,0.06);">
+                        <div style="font-size:10px; font-family:'Fira Code',monospace; font-weight:700; color:rgba(255,255,255,0.3); text-transform:uppercase; letter-spacing:0.08em; margin-bottom:7px;">Top Interests</div>
+                        <div style="display:flex; flex-wrap:wrap; gap:5px;">
+                            ${interests.map(i => `<span style="font-size:11px; padding:3px 8px; border-radius:6px; background:rgba(217,70,239,0.1); color:#e879f9; border:1px solid rgba(217,70,239,0.18);">${i.topic}</span>`).join('')}
+                        </div>
+                    </div>`;
+                }
+
+                if (facts.length > 0) {
+                    html += `<div style="padding:12px 14px;">
+                        <div style="font-size:10px; font-family:'Fira Code',monospace; font-weight:700; color:rgba(255,255,255,0.3); text-transform:uppercase; letter-spacing:0.08em; margin-bottom:7px;">Key Facts</div>
+                        <div style="display:flex; flex-direction:column; gap:6px;">
+                            ${facts.map(f => `<div style="font-size:11px; color:#b8b4b0; line-height:1.5; display:flex; gap:6px; align-items:flex-start;">
+                                <i data-lucide="brain" style="width:11px; height:11px; color:#22c55e; flex-shrink:0; margin-top:2px;"></i>
+                                <span>${f.fact}</span>
+                            </div>`).join('')}
+                        </div>
+                    </div>`;
+                } else {
+                    html += `<div style="padding:20px 14px; font-size:11px; color:rgba(255,255,255,0.2); font-family:'Fira Code',monospace; text-align:center;">No facts recorded yet</div>`;
+                }
+
+                el.innerHTML = html;
+                lucide.createIcons();
+            } catch (e) {
+                console.error('Failed to load kid snapshot', e);
+                el.innerHTML = '<div style="padding:20px; color:#f87171; font-size:11px; font-family:\'Fira Code\',monospace; text-align:center;">Failed to load</div>';
+            }
+        }
+
+        // --- Agent Insights (right panel) ---
+        async function loadAgentInsights(agentType) {
+            const statsEl = document.getElementById('agent-stats-container');
+            const sugEl = document.getElementById('suggestions-list');
+            if (statsEl) statsEl.innerHTML = '<div style="padding:14px; color:rgba(255,255,255,0.2); font-size:12px; font-family:\'Fira Code\',monospace; text-align:center;">Loading…</div>';
+            if (sugEl) sugEl.innerHTML = '<div style="padding:14px 0; color:rgba(255,255,255,0.2); font-size:12px; font-family:\'Fira Code\',monospace; text-align:center;">Loading…</div>';
+
+            try {
+                const [statsRes, sugRes] = await Promise.all([
+                    fetch('/api/agent-stats/' + adminUserId + '/' + agentType),
+                    fetch('/api/suggestions?userId=' + adminUserId + '&agentId=' + agentType)
+                ]);
+                const statsData = await statsRes.json();
+                const sugData = await sugRes.json();
+
+                // Render stats
+                if (statsData.success && statsData.stats) {
+                    const s = statsData.stats;
+                    const count = s.session_count || 0;
+                    const rawScore = s.avg_engagement_score;
+                    const score = rawScore != null ? Number(rawScore).toFixed(1) : null;
+                    const scoreColor = score == null ? '#a8a29e' : score >= 7 ? '#4ade80' : score >= 4 ? '#facc15' : '#f87171';
+                    const onTask = s.avg_on_task_ratio != null ? Math.round(s.avg_on_task_ratio * 100) + '%' : '--';
+                    statsEl.innerHTML = `
+                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; padding:12px 14px;">
+                            <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.07); border-radius:10px; padding:12px; text-align:center;">
+                                <div style="font-size:24px; font-weight:700; color:#fafaf9; font-family:'Fira Code',monospace;">${count}</div>
+                                <div style="font-size:10px; color:rgba(255,255,255,0.35); font-family:'Fira Code',monospace; margin-top:2px;">Sessions</div>
+                            </div>
+                            <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.07); border-radius:10px; padding:12px; text-align:center;">
+                                <div style="font-size:24px; font-weight:700; color:${scoreColor}; font-family:'Fira Code',monospace;">${score ?? '--'}</div>
+                                <div style="font-size:10px; color:rgba(255,255,255,0.35); font-family:'Fira Code',monospace; margin-top:2px;">Avg Score</div>
+                            </div>
+                        </div>
+                        <div style="padding:0 14px 12px; display:flex; align-items:center; justify-content:center; gap:8px; font-size:11px; font-family:'Fira Code',monospace; color:rgba(255,255,255,0.35);">
+                            <i data-lucide="target" style="width:12px; height:12px;"></i> On-task avg: ${onTask}
+                        </div>`;
+                    lucide.createIcons();
+                } else {
+                    statsEl.innerHTML = '<div style="padding:14px; color:rgba(255,255,255,0.2); font-size:11px; font-family:\'Fira Code\',monospace; text-align:center;">No session data for this agent yet</div>';
+                }
+
+                // Render suggestions
+                renderSuggestions(sugData.suggestions || []);
+            } catch (e) {
+                console.error('Failed to load agent insights', e);
+            }
         }
 
         function renderSuggestions(suggestions) {
             const list = document.getElementById('suggestions-list');
+            if (!list) return;
             list.innerHTML = '';
 
             if (suggestions.length === 0) {
-                list.innerHTML = '<div class="empty-state"><i data-lucide="check-circle-2" style="width:42px;height:42px;color:rgba(74,222,128,0.4);"></i><span style="color:rgba(255,255,255,0.3);">No suggestions yet. Agents are performing well!</span></div>';
+                list.innerHTML = `<div style="display:flex; flex-direction:column; align-items:center; gap:10px; padding:28px 16px; color:rgba(255,255,255,0.25);">
+                    <i data-lucide="check-circle-2" style="width:32px;height:32px;color:rgba(74,222,128,0.35);"></i>
+                    <span style="font-size:12px; font-family:'Fira Code',monospace; text-align:center;">No suggestions yet for this agent with this child.</span>
+                </div>`;
                 lucide.createIcons();
                 return;
             }
 
             suggestions.forEach(s => {
                 const div = document.createElement('div');
-                div.style.cssText = 'background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.07); border-radius:12px; padding:18px 20px; margin-bottom:12px; transition:background 0.15s ease;';
-                div.onmouseover = () => div.style.background = 'rgba(255,255,255,0.06)';
+                div.style.cssText = 'background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.07); border-radius:10px; padding:14px; margin-bottom:8px; transition:background 0.15s ease;';
+                div.onmouseover = () => div.style.background = 'rgba(255,255,255,0.055)';
                 div.onmouseout = () => div.style.background = 'rgba(255,255,255,0.03)';
+                const scoreColor = s.engagement_score < 5 ? '#f87171' : '#facc15';
+                const suggestionEscaped = s.prompt_improvement_suggestion.replace(/'/g, "\\'").replace(/"/g, '&quot;');
                 div.innerHTML = `
-                    <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px;">
-                        <span class="badge badge-purple">${s.topic || 'Any Topic'}</span>
-                        <span style="font-size:11px; font-family:'Fira Code',monospace; color:rgba(255,255,255,0.3);">${new Date(s.created_at || Date.now()).toLocaleDateString()}</span>
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px; gap:6px;">
+                        <span style="font-size:10px; padding:2px 7px; border-radius:5px; background:rgba(217,70,239,0.1); color:#e879f9; border:1px solid rgba(217,70,239,0.18); font-family:'Fira Code',monospace; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:140px;">${s.topic || 'General'}</span>
+                        <span style="font-size:10px; font-family:'Fira Code',monospace; color:rgba(255,255,255,0.28); flex-shrink:0;">${new Date(s.created_at || Date.now()).toLocaleDateString()}</span>
                     </div>
-                    <p style="font-size:13px; color:#c8c4c0; font-family:'Fira Sans',sans-serif; line-height:1.65;">${s.prompt_improvement_suggestion}</p>
-                    <div style="margin-top:14px; padding-top:12px; border-top:1px solid rgba(255,255,255,0.06); display:flex; align-items:center; justify-content:space-between; font-size:11px; font-family:'Fira Code',monospace; color:rgba(255,255,255,0.3);">
-                        <span style="display:flex; align-items:center; gap:5px;"><i data-lucide="target" style="width:12px;height:12px;color:${s.engagement_score < 5 ? '#f87171' : '#facc15'};"></i> Score: ${s.engagement_score}/10</span>
-                        <span>LLM Generated</span>
-                    </div>
-                `;
+                    <p style="font-size:12px; color:#c0bbb7; font-family:'Fira Sans',sans-serif; line-height:1.6; margin:0 0 10px;">${s.prompt_improvement_suggestion}</p>
+                    <div style="display:flex; align-items:center; justify-content:space-between; padding-top:10px; border-top:1px solid rgba(255,255,255,0.06);">
+                        <span style="font-size:10px; font-family:'Fira Code',monospace; color:rgba(255,255,255,0.3); display:flex; align-items:center; gap:4px;">
+                            <i data-lucide="target" style="width:11px;height:11px;color:${scoreColor};"></i> ${s.engagement_score}/10
+                        </span>
+                        <button onclick="applySuggestion('${suggestionEscaped}')"
+                            style="padding:4px 10px; background:rgba(217,70,239,0.1); color:#e879f9; font-size:11px; font-weight:600; border-radius:6px; border:1px solid rgba(217,70,239,0.22); cursor:pointer; display:flex; align-items:center; gap:4px; transition:background 0.12s ease;"
+                            onmouseover="this.style.background='rgba(217,70,239,0.2)'" onmouseout="this.style.background='rgba(217,70,239,0.1)'">
+                            <i data-lucide="arrow-up-left" style="width:11px;height:11px;"></i> Apply
+                        </button>
+                    </div>`;
                 list.appendChild(div);
             });
             lucide.createIcons();
+        }
+
+        function applySuggestion(text) {
+            const ta = document.getElementById('prompt-textarea');
+            if (!ta) return;
+            const comment = '# SUGGESTION TO INCORPORATE:\n# ' + text + '\n\n';
+            ta.value = comment + ta.value;
+            updateWordCount();
+            ta.focus();
+            ta.scrollTop = 0;
+        }
+
+        // --- Auto-Tune ---
+        async function autoTune() {
+            const btn = document.getElementById('btn-autotune');
+            btn.innerHTML = '<i data-lucide="loader-2" style="width:13px;height:13px;" class="animate-spin"></i> Generating…';
+            btn.disabled = true;
+            lucide.createIcons();
+            try {
+                const res = await fetch('/api/prompts/' + adminUserId + '/' + studioAgent + '/auto-tune', { method: 'POST' });
+                const data = await res.json();
+                if (data.success && data.tuned_prompt) {
+                    document.getElementById('autotune-preview-text').value = data.tuned_prompt;
+                    document.getElementById('autotune-overlay').style.display = 'flex';
+                } else {
+                    alert('Auto-tune failed: ' + (data.error || 'Unknown error'));
+                }
+            } catch (e) {
+                console.error(e);
+                alert('Auto-tune request failed.');
+            } finally {
+                btn.innerHTML = '<i data-lucide="wand-2" style="width:13px;height:13px;"></i> Auto-Tune with AI';
+                btn.disabled = false;
+                lucide.createIcons();
+            }
+        }
+
+        function acceptAutoTune() {
+            const text = document.getElementById('autotune-preview-text').value;
+            document.getElementById('prompt-textarea').value = text;
+            updateWordCount();
+            document.getElementById('autotune-overlay').style.display = 'none';
+        }
+
+        function discardAutoTune() {
+            document.getElementById('autotune-overlay').style.display = 'none';
         }
 
         // --- Child Profile Logic ---
@@ -999,6 +1420,14 @@
                     </div>`;
                 }).join('');
                 lucide.createIcons();
+
+                // Also load all insight data into the unified profile view
+                loadEngagementInsights(adminUserId);
+                loadInterestInsights(adminUserId);
+                loadExplorationInsights(adminUserId);
+                loadThinkingInsights(adminUserId);
+                loadPersistenceInsights(adminUserId);
+                loadSafetyInsights(adminUserId);
             } catch (e) { console.error('Profile load error', e); }
         }
 
@@ -1019,28 +1448,19 @@
                 document.getElementById('personality-tags').innerHTML = (p.personality_tags || []).map(t =>
                     `<span class="inline-flex items-center px-3 py-1 rounded-full bg-violet-100 text-violet-700 text-xs font-mono font-semibold">${t}</span>`
                 ).join(' ');
-                document.getElementById('persona-card').classList.remove('hidden');
+                document.getElementById('persona-card').style.display = 'block';
 
                 // Strengths
                 document.getElementById('strengths-list').innerHTML = (p.strengths || []).map(s =>
-                    `<li class="flex items-start gap-2 text-sm text-slate-700 font-sans">
-                        <i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-500 mt-0.5 shrink-0"></i>${s}</li>`
+                    `<li style="display:flex; align-items:flex-start; gap:8px; font-size:13px; color:#c8c4c0; font-family:'Fira Sans',sans-serif;">
+                        <i data-lucide="check-circle-2" style="width:14px;height:14px;color:#4ade80;flex-shrink:0;margin-top:2px;"></i>${s}</li>`
                 ).join('');
-                document.getElementById('strengths-card').classList.remove('hidden');
 
                 // Topic Gaps
-                const gapColors = {
-                    Science: 'bg-blue-50 border-blue-200 text-blue-700', History: 'bg-amber-50 border-amber-200 text-amber-700',
-                    Space: 'bg-violet-50 border-violet-200 text-violet-700', Geography: 'bg-emerald-50 border-emerald-200 text-emerald-700',
-                    Math: 'bg-red-50 border-red-200 text-red-700', Art: 'bg-pink-50 border-pink-200 text-pink-700',
-                    Music: 'bg-indigo-50 border-indigo-200 text-indigo-700', Nature: 'bg-teal-50 border-teal-200 text-teal-700'
-                };
                 document.getElementById('gaps-list').innerHTML = (p.topic_gaps || []).map(t => {
-                    const cls = gapColors[t] || 'bg-slate-50 border-slate-200 text-slate-700';
-                    return `<span class="inline-flex items-center gap-1.5 px-3 py-1.5 border rounded-lg text-xs font-mono font-semibold ${cls}">
-                        <i data-lucide="compass" class="w-3 h-3"></i>${t}</span>`;
+                    return `<span style="display:inline-flex; align-items:center; gap:5px; padding:4px 12px; background:rgba(234,179,8,0.1); border:1px solid rgba(234,179,8,0.2); color:#facc15; font-size:12px; font-family:'Fira Code',monospace; border-radius:99px;">
+                        <i data-lucide="compass" style="width:12px;height:12px;"></i>${t}</span>`;
                 }).join(' ');
-                document.getElementById('gaps-card').classList.remove('hidden');
 
                 lucide.createIcons();
             } catch (e) {
@@ -1102,24 +1522,57 @@
                     el.innerHTML = '<div style="color:rgba(255,255,255,0.25); text-align:center; padding:16px;">No engagement data yet. Summarize some sessions first!</div>';
                     return;
                 }
-                let html = '<div style="display:flex; flex-direction:column; gap:6px;">';
-                data.trends.forEach(t => {
-                    const score = t.engagement_score || 0;
-                    let scoreColor, scoreBg, scoreBorder;
-                    if (score >= 7) { scoreColor = '#4ade80'; scoreBg = 'rgba(34,197,94,0.1)'; scoreBorder = 'rgba(34,197,94,0.2)'; }
-                    else if (score >= 4) { scoreColor = '#facc15'; scoreBg = 'rgba(234,179,8,0.1)'; scoreBorder = 'rgba(234,179,8,0.2)'; }
-                    else { scoreColor = '#f87171'; scoreBg = 'rgba(239,68,68,0.1)'; scoreBorder = 'rgba(239,68,68,0.2)'; }
-                    const onTask = t.on_task_ratio != null ? Math.round(t.on_task_ratio * 100) + '% on-task' : '';
-                    const turns = t.child_turn_count != null ? t.child_turn_count + ' turns' : '';
-                    const positive = t.positive_affect_count != null ? t.positive_affect_count + ' positive' : '';
-                    const meta = [turns, onTask, positive].filter(Boolean).join('  ·  ');
-                    const dateStr = t.computed_at ? new Date(t.computed_at).toLocaleDateString() : '';
-                    html += `<div style="display:flex; align-items:center; gap:12px; padding:8px 12px; border-radius:8px; background:rgba(255,255,255,0.02);">
-                        <span style="display:inline-flex; align-items:center; justify-content:center; width:36px; height:28px; border-radius:6px; background:${scoreBg}; border:1px solid ${scoreBorder}; color:${scoreColor}; font-family:'Fira Code',monospace; font-size:13px; font-weight:700;">${score}</span>
-                        <span style="flex:1; font-size:12px; color:rgba(255,255,255,0.5); font-family:'Fira Code',monospace;">${meta}</span>
-                        <span style="font-size:10px; color:rgba(255,255,255,0.25); font-family:'Fira Code',monospace;">${dateStr}</span>
+                const trends = data.trends;
+                const totalSessions = trends.length;
+
+                // Compute averages
+                const avgScore = trends.reduce((sum, t) => sum + (t.engagement_score || 0), 0) / totalSessions;
+                const avgOnTask = trends.filter(t => t.on_task_ratio != null).length > 0
+                    ? trends.reduce((sum, t) => sum + (t.on_task_ratio || 0), 0) / trends.filter(t => t.on_task_ratio != null).length
+                    : null;
+
+                // Compute trend: compare last 3 vs previous 3
+                let trendArrow = '';
+                let trendLabel = '';
+                if (totalSessions >= 4) {
+                    const recent3 = trends.slice(0, 3).reduce((s, t) => s + (t.engagement_score || 0), 0) / 3;
+                    const prev3 = trends.slice(3, 6).reduce((s, t) => s + (t.engagement_score || 0), 0) / Math.min(3, trends.slice(3, 6).length);
+                    const diff = recent3 - prev3;
+                    if (diff > 0.5) { trendArrow = '\u2191'; trendLabel = 'Improving'; }
+                    else if (diff < -0.5) { trendArrow = '\u2193'; trendLabel = 'Declining'; }
+                    else { trendArrow = '\u2192'; trendLabel = 'Stable'; }
+                }
+
+                // Color based on score
+                let scoreColor, scoreBg, scoreBorder;
+                if (avgScore >= 7) { scoreColor = '#4ade80'; scoreBg = 'rgba(34,197,94,0.1)'; scoreBorder = 'rgba(34,197,94,0.2)'; }
+                else if (avgScore >= 4) { scoreColor = '#facc15'; scoreBg = 'rgba(234,179,8,0.1)'; scoreBorder = 'rgba(234,179,8,0.2)'; }
+                else { scoreColor = '#f87171'; scoreBg = 'rgba(239,68,68,0.1)'; scoreBorder = 'rgba(239,68,68,0.2)'; }
+
+                let html = `<div style="display:flex; flex-direction:column; align-items:center; gap:8px;">
+                    <div style="font-size:36px; font-family:'Fira Code',monospace; font-weight:700; color:${scoreColor};">${avgScore.toFixed(1)}</div>
+                    <div style="font-size:11px; color:rgba(255,255,255,0.35); font-family:'Fira Code',monospace;">${totalSessions} session${totalSessions !== 1 ? 's' : ''} analyzed</div>`;
+
+                if (avgOnTask != null) {
+                    const onTaskPct = Math.round(avgOnTask * 100);
+                    html += `<div style="width:100%; margin-top:6px;">
+                        <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
+                            <span style="font-size:10px; color:rgba(255,255,255,0.35); font-family:'Fira Code',monospace;">On-task ratio</span>
+                            <span style="font-size:10px; color:rgba(255,255,255,0.5); font-family:'Fira Code',monospace;">${onTaskPct}%</span>
+                        </div>
+                        <div style="width:100%; height:6px; background:rgba(255,255,255,0.06); border-radius:99px; overflow:hidden;">
+                            <div style="height:100%; width:${onTaskPct}%; background:#22d3ee; border-radius:99px;"></div>
+                        </div>
                     </div>`;
-                });
+                }
+
+                if (trendArrow) {
+                    const trendColor = trendArrow === '\u2191' ? '#4ade80' : trendArrow === '\u2193' ? '#f87171' : '#facc15';
+                    html += `<div style="display:flex; align-items:center; gap:6px; margin-top:4px; font-size:12px; font-family:'Fira Code',monospace; color:${trendColor};">
+                        <span style="font-size:16px;">${trendArrow}</span> ${trendLabel}
+                    </div>`;
+                }
+
                 html += '</div>';
                 el.innerHTML = html;
             } catch (e) {
@@ -1317,54 +1770,192 @@
 
         // --- Admin Profile Management ---
         let adminUserId = 'kid_1';
+        let allProfiles = [];
 
         async function loadAdminProfiles() {
             try {
                 const res = await fetch('/api/profiles');
                 const data = await res.json();
                 if (data.success && data.profiles) {
-                    const select = document.getElementById('admin-profile-select');
-                    select.innerHTML = '';
-                    data.profiles.forEach(p => {
-                        const opt = document.createElement('option');
-                        opt.value = p.user_id;
-                        opt.textContent = p.display_name + (p.age ? ` (${p.age})` : '');
-                        select.appendChild(opt);
-                    });
-                    if (data.profiles.find(p => p.user_id === adminUserId)) {
-                        select.value = adminUserId;
-                    } else if (data.profiles.length > 0) {
-                        adminUserId = data.profiles[0].user_id;
-                        select.value = adminUserId;
-                    }
-                    // Update profile tab header
-                    const selectedProfile = data.profiles.find(p => p.user_id === adminUserId);
-                    if (selectedProfile) updateProfileHeader(selectedProfile);
+                    allProfiles = data.profiles;
+                    renderKidCards(data.profiles);
                 }
             } catch (e) {
                 console.error('Failed to load admin profiles', e);
             }
         }
 
-        function onAdminProfileChanged() {
-            adminUserId = document.getElementById('admin-profile-select').value;
-            // Update profile header label
-            document.getElementById('profile-user-id-label').textContent = adminUserId;
-            // Reload current view data for the new profile
-            const activeView = ALL_VIEWS.find(v => {
-                const el = document.getElementById('view-' + v);
-                return el && !el.classList.contains('opacity-0');
-            });
-            if (activeView === 'profile') loadChildProfile();
-            if (activeView === 'insights') loadLearningInsights();
-            if (activeView === 'recommendations') loadRecommendations();
+        function renderKidCards(profiles) {
+            const grid = document.getElementById('kids-grid');
+            if (!grid) return;
+            if (profiles.length === 0) {
+                grid.innerHTML = '<div style="color:rgba(255,255,255,0.25); font-family:\'Fira Code\',monospace; font-size:13px; text-align:center; padding:60px; grid-column:1/-1;">No children added yet. Click "Add Kid" to get started!</div>';
+                return;
+            }
+            grid.innerHTML = profiles.map(p => {
+                const initials = p.display_name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
+                const color = p.avatar_color || '#d946ef';
+                const age = p.age ? p.age + ' years old' : 'Age not set';
+                const profileJson = JSON.stringify(p).replace(/"/g, '&quot;');
+                return `<div class="kid-card" onclick="showKidDashboard(JSON.parse(this.dataset.profile))" data-profile="${profileJson}">
+                    <div style="display:flex; align-items:center; gap:14px;">
+                        <div class="kid-card-avatar" style="background:linear-gradient(135deg, ${color}, ${color}88);">${initials}</div>
+                        <div>
+                            <div style="font-size:16px; font-weight:700; color:#fafaf9;">${p.display_name}</div>
+                            <div style="font-size:12px; color:rgba(255,255,255,0.4); font-family:'Fira Code',monospace;">${age}</div>
+                        </div>
+                    </div>
+                    <div style="font-size:11px; color:rgba(255,255,255,0.3); font-family:'Fira Code',monospace;">ID: ${p.user_id}</div>
+                    <button class="kid-card-open-btn" onclick="event.stopPropagation(); showKidDashboard(JSON.parse(this.closest('.kid-card').dataset.profile))">
+                        <i data-lucide="layout-dashboard" style="width:12px; height:12px;"></i> Open Dashboard
+                    </button>
+                </div>`;
+            }).join('');
+            lucide.createIcons();
         }
 
-        function updateProfileHeader(profile) {
-            const header = document.querySelector('#view-profile h2');
-            if (header) header.innerHTML = `<i data-lucide="user-round" style="width:22px;height:22px;color:#d946ef;"></i> ${profile.display_name} — Learning Profile`;
-            document.getElementById('profile-user-id-label').textContent = profile.user_id;
+        function showAddKidModal() {
+            document.getElementById('add-kid-modal').style.display = 'flex';
+            goToAddKidStep1();
+            renderAddKidTopics();
+            setTimeout(() => document.getElementById('add-kid-name').focus(), 50);
+        }
+
+        function hideAddKidModal() {
+            document.getElementById('add-kid-modal').style.display = 'none';
+            document.getElementById('add-kid-name').value = '';
+            document.getElementById('add-kid-age').value = '';
+        }
+
+        function goToAddKidStep1() {
+            document.getElementById('add-kid-step-1').style.display = 'block';
+            document.getElementById('add-kid-step-2').style.display = 'none';
+        }
+
+        function goToAddKidStep2() {
+            const name = document.getElementById('add-kid-name').value.trim();
+            if (!name) return alert('Please enter a name first.');
+            document.getElementById('add-kid-step-1').style.display = 'none';
+            document.getElementById('add-kid-step-2').style.display = 'block';
+        }
+
+        // --- Topic Data & Rendering ---
+        
+        const TOPICS_DATA = {
+            core: [
+                "Science & Physics", "Animals & Habitats", "Space & Astronomy",
+                "Math & Logic", "Art & Creativity", "History & Ancient World",
+                "Inventions & Engineering", "Geography & Oceans", "Music & Instruments",
+                "Sports & Physical Activities", "Healthy Eating & Cooking", "Friendship & Social Skills",
+                "Dinosaurs & Prehistoric Life", "Coding & Computers", "Reading & Literature",
+                "Languages & Cultures", "Vehicles & Transportation", "Fantasy & Mythology",
+                "Crafts & DIY Projects", "Nature & Gardening", "Earth Sciences & Weather",
+                "Performing Arts & Theater", "Magic Tricks & Illusions"
+            ],
+            sensitive: [
+                "Bullying & Conflict Resolution", "Body Autonomy & Boundaries", "Advanced World Religions",
+                "Illness, Death & Grieving", "Current Events & News", "Identity & Peer Pressure",
+                "Puberty & Human Reproduction", "Mental Health & Anxiety", "Gender Identity & Expression",
+                "Family Dynamics & Divorce", "Disabilities & Neurodiversity", "Money & Financial Stress"
+            ],
+            blocked: [
+                "Violence & Gore", "Suggestive/Adult Content", "Profanity & Hate Speech",
+                "Self-Harm & Suicide", "Political Extremism", "Dangerous & Illegal Acts", 
+                "Diet Culture & Weight", "Substance Abuse & Drugs", "Weapons & Firearms",
+                "True Crime & Serial Killers", "Gambling", "Horror & Extreme Fear"
+            ]
+        };
+
+        let selectedTopics = {
+            core: new Set(TOPICS_DATA.core), // All core selected by default
+            sensitive: new Set()             // None selected by default
+        };
+
+        function renderAddKidTopics() {
+            // Core Topics
+            const coreContainer = document.getElementById('topics-core-container');
+            coreContainer.innerHTML = TOPICS_DATA.core.map(topic => 
+                `<div class="topic-pill core ${selectedTopics.core.has(topic) ? 'selected' : ''}" onclick="toggleTopic('core', '${topic}', this)">
+                    <i data-lucide="${selectedTopics.core.has(topic) ? 'check' : 'plus'}" style="width:12px; height:12px;"></i> ${topic}
+                </div>`
+            ).join('');
+
+            // Sensitive Topics
+            const sensitiveContainer = document.getElementById('topics-sensitive-container');
+            sensitiveContainer.innerHTML = TOPICS_DATA.sensitive.map(topic => 
+                `<div class="topic-pill sensitive ${selectedTopics.sensitive.has(topic) ? 'selected' : ''}" onclick="toggleTopic('sensitive', '${topic}', this)">
+                    <i data-lucide="${selectedTopics.sensitive.has(topic) ? 'check' : 'plus'}" style="width:12px; height:12px;"></i> ${topic}
+                </div>`
+            ).join('');
+
+            // Blocked Topics (Static)
+            const blockedContainer = document.getElementById('topics-blocked-container');
+            blockedContainer.innerHTML = TOPICS_DATA.blocked.map(topic => 
+                `<div class="topic-pill blocked">
+                    <i data-lucide="x" style="width:12px; height:12px;"></i> ${topic}
+                </div>`
+            ).join('');
+
             lucide.createIcons();
+        }
+
+        window.toggleTopic = function(category, topicLabel, element) {
+            const set = selectedTopics[category];
+            if (set.has(topicLabel)) {
+                set.delete(topicLabel);
+                element.classList.remove('selected');
+            } else {
+                set.add(topicLabel);
+                element.classList.add('selected');
+            }
+            // Re-render icon
+            const icon = element.querySelector('i');
+            if (icon) {
+                icon.setAttribute('data-lucide', set.has(topicLabel) ? 'check' : 'plus');
+                lucide.createIcons();
+            }
+        };
+
+        async function createKid() {
+            const name = document.getElementById('add-kid-name').value.trim();
+            const age = parseInt(document.getElementById('add-kid-age').value) || null;
+            if (!name) return alert('Please enter a name.');
+            
+            // Build Preferences JSON payload
+            const allowed = [...selectedTopics.core, ...selectedTopics.sensitive];
+            const blocked = [...TOPICS_DATA.blocked];
+            
+            const preferences = {
+                allowed: allowed,
+                blocked: blocked
+            };
+
+            const btn = event.currentTarget;
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i data-lucide="loader-2" style="width:14px;height:14px;" class="animate-spin"></i> Saving...';
+            btn.disabled = true;
+            lucide.createIcons();
+
+            try {
+                const res = await fetch('/api/profiles', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ display_name: name, age, preferences })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    hideAddKidModal();
+                    await loadAdminProfiles();
+                } else {
+                    alert('Failed to create profile: ' + (data.error || 'Unknown error'));
+                }
+            } catch (e) {
+                alert('Failed to create profile.');
+                console.error(e);
+            } finally {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
         }
 
         // --- Recommendations Logic ---
@@ -1458,13 +2049,115 @@
         }
 
         // Init
-        loadAdminProfiles();
-        loadSessions();
+        async function initAdmin() {
+            await loadAdminProfiles();
+            showLanding();
+        }
+        initAdmin();
     </script>
 
-    <!-- Child Profile View -->
+    <!-- Auto-Tune Preview Overlay -->
+    <div id="autotune-overlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.82); z-index:200; align-items:center; justify-content:center; backdrop-filter:blur(6px);">
+        <div style="background:#1c1917; border:1px solid rgba(217,70,239,0.22); border-radius:20px; padding:28px; width:700px; max-width:94vw; max-height:88vh; display:flex; flex-direction:column; gap:16px;">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <h3 style="font-size:16px; font-weight:700; color:#fafaf9; display:flex; align-items:center; gap:10px; margin:0;">
+                    <i data-lucide="wand-2" style="width:17px; height:17px; color:#e879f9;"></i> Auto-Tuned Prompt Preview
+                </h3>
+                <button onclick="discardAutoTune()" style="background:none; border:none; color:rgba(255,255,255,0.4); font-size:22px; cursor:pointer; padding:2px 8px; line-height:1;">&times;</button>
+            </div>
+            <p style="font-size:12px; color:rgba(255,255,255,0.4); font-family:'Fira Code',monospace; margin:0;">
+                Gemini personalised this prompt using the child's interests, memory facts, and past session patterns. Review and edit before accepting.
+            </p>
+            <textarea id="autotune-preview-text"
+                style="flex:1; min-height:380px; padding:16px; background:#0a0908; color:#e8e5e2; font-family:'Fira Code',monospace; font-size:12px; line-height:1.7; border-radius:10px; border:1px solid rgba(255,255,255,0.08); outline:none; resize:none;"
+                spellcheck="false"></textarea>
+            <div style="display:flex; gap:10px; justify-content:flex-end;">
+                <button onclick="discardAutoTune()"
+                    style="padding:9px 18px; background:rgba(255,255,255,0.07); color:#a8a29e; font-size:13px; font-weight:600; border-radius:8px; border:1px solid rgba(255,255,255,0.1); cursor:pointer;">
+                    Discard
+                </button>
+                <button onclick="acceptAutoTune()"
+                    style="padding:9px 22px; background:linear-gradient(135deg,#d946ef,#818cf8); color:white; font-size:13px; font-weight:600; border-radius:8px; border:none; cursor:pointer; display:flex; align-items:center; gap:7px; box-shadow:0 0 16px rgba(217,70,239,0.25);">
+                    <i data-lucide="check" style="width:13px; height:13px;"></i> Accept &amp; Load into Editor
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Kid Modal (Multi-Step) -->
+    <div id="add-kid-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:100; align-items:center; justify-content:center; backdrop-filter:blur(4px);">
+        <div style="background:#1c1917; border:1px solid rgba(255,255,255,0.12); border-radius:20px; padding:32px; width:480px; max-width:90vw;">
+            
+            <!-- Step 1: Basic Info -->
+            <div id="add-kid-step-1">
+                <h3 style="font-size:17px; font-weight:700; color:#fafaf9; margin:0 0 8px; display:flex; align-items:center; gap:10px;">
+                    <i data-lucide="user-plus" style="width:18px; height:18px; color:#d946ef;"></i> Add New Child (Step 1 of 2)
+                </h3>
+                <p style="font-size:13px; color:rgba(255,255,255,0.4); margin-bottom:20px;">Let's start with some basic information.</p>
+                
+                <input type="text" id="add-kid-name" placeholder="Child's name" autocomplete="off"
+                    style="width:100%; padding:10px 14px; background:#0c0a09; border:1px solid rgba(255,255,255,0.12); border-radius:8px; color:#fafaf9; font-size:14px; outline:none; margin-bottom:12px; box-sizing:border-box;"
+                    onfocus="this.style.borderColor='rgba(217,70,239,0.5)'" onblur="this.style.borderColor='rgba(255,255,255,0.12)'" />
+                <input type="number" id="add-kid-age" placeholder="Age (optional)" min="1" max="18"
+                    style="width:100%; padding:10px 14px; background:#0c0a09; border:1px solid rgba(255,255,255,0.12); border-radius:8px; color:#fafaf9; font-size:14px; outline:none; margin-bottom:24px; box-sizing:border-box;"
+                    onfocus="this.style.borderColor='rgba(217,70,239,0.5)'" onblur="this.style.borderColor='rgba(255,255,255,0.12)'" />
+                
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <button onclick="hideAddKidModal()" style="padding:9px 18px; background:rgba(255,255,255,0.07); color:#a8a29e; font-size:13px; font-weight:600; border-radius:8px; border:1px solid rgba(255,255,255,0.1); cursor:pointer;">Cancel</button>
+                    <button onclick="goToAddKidStep2()" style="padding:9px 18px; background:linear-gradient(135deg,#d946ef,#818cf8); color:white; font-size:13px; font-weight:600; border-radius:8px; border:none; cursor:pointer; display:flex; align-items:center; gap:6px;">Next <i data-lucide="arrow-right" style="width:14px; height:14px;"></i></button>
+                </div>
+            </div>
+
+            <!-- Step 2: Topic Preferences -->
+            <div id="add-kid-step-2" style="display:none;">
+                <h3 style="font-size:17px; font-weight:700; color:#fafaf9; margin:0 0 8px; display:flex; align-items:center; gap:10px;">
+                    <i data-lucide="shield-check" style="width:18px; height:18px; color:#4ade80;"></i> Topic Preferences (Step 2 of 2)
+                </h3>
+                <p style="font-size:13px; color:rgba(255,255,255,0.4); margin-bottom:20px; line-height:1.5;">Customize what Socratoys can discuss with your child.</p>
+                
+                <div style="max-height: 50vh; overflow-y: auto; padding-right: 8px; margin-bottom: 24px; display:flex; flex-direction:column; gap:20px;">
+                    
+                    <!-- Core Info -->
+                    <div>
+                        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
+                            <div style="font-size:12px; font-weight:700; color:#e8e5e2;">Recommended Core Topics</div>
+                            <span style="font-size:10px; background:rgba(129,140,248,0.15); color:#818cf8; padding:2px 6px; border-radius:4px; font-weight:600;">Selected by default</span>
+                        </div>
+                        <p style="font-size:11px; color:rgba(255,255,255,0.35); margin-bottom:12px; line-height:1.4;">Safe, everyday educational topics ideal for 5-10 year olds.</p>
+                        <div id="topics-core-container" style="display:flex; flex-wrap:wrap; gap:8px;"></div>
+                    </div>
+
+                    <!-- Sensitive -->
+                    <div style="padding-top:20px; border-top:1px solid rgba(255,255,255,0.06);">
+                        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
+                            <div style="font-size:12px; font-weight:700; color:#facc15;">Nuanced / Sensitive Topics</div>
+                            <span style="font-size:10px; background:rgba(250,204,21,0.15); color:#facc15; padding:2px 6px; border-radius:4px; font-weight:600;">Opt-in required</span>
+                        </div>
+                        <p style="font-size:11px; color:rgba(255,255,255,0.35); margin-bottom:12px; line-height:1.4;">Complex topics approached in a gentle, age-appropriate way. Select which you are comfortable with.</p>
+                        <div id="topics-sensitive-container" style="display:flex; flex-wrap:wrap; gap:8px;"></div>
+                    </div>
+
+                    <!-- Prohibited -->
+                    <div style="padding-top:20px; border-top:1px solid rgba(255,255,255,0.06);">
+                        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
+                            <div style="font-size:12px; font-weight:700; color:#f87171;">Strictly Prohibited</div>
+                            <span style="font-size:10px; background:rgba(248,113,113,0.15); color:#fca5a5; padding:2px 6px; border-radius:4px; font-weight:600;">Always Blocked</span>
+                        </div>
+                        <p style="font-size:11px; color:rgba(255,255,255,0.35); margin-bottom:12px; line-height:1.4;">If asked about these, Socratoys will gently suggest talking to an adult.</p>
+                        <div id="topics-blocked-container" style="display:flex; flex-wrap:wrap; gap:8px;"></div>
+                    </div>
+
+                </div>
+
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <button onclick="goToAddKidStep1()" style="padding:9px 18px; background:transparent; color:#a8a29e; font-size:13px; font-weight:600; border:none; cursor:pointer;">Back</button>
+                    <button onclick="createKid()" style="padding:9px 18px; background:linear-gradient(135deg,#d946ef,#818cf8); color:white; font-size:13px; font-weight:600; border-radius:8px; border:none; cursor:pointer;">Finish & Save</button>
+                </div>
+            </div>
+
+        </div>
+    </div>
 
 </body>
 
 </html>
-```

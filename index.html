@@ -100,40 +100,6 @@
             opacity: 1;
         }
 
-        /* ---- Mode Toggle ---- */
-        .mode-toggle {
-            display: flex;
-            align-items: center;
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 10px;
-            padding: 3px;
-            gap: 2px;
-        }
-
-        .mode-toggle .mode-pill {
-            padding: 6px 14px;
-            border-radius: 7px;
-            font-size: 12px;
-            font-weight: 500;
-            color: #a8a29e;
-            cursor: pointer;
-            border: none;
-            background: transparent;
-            transition: all 0.15s ease;
-            white-space: nowrap;
-        }
-
-        .mode-toggle .mode-pill:hover {
-            color: #f5f5f4;
-        }
-
-        .mode-toggle .mode-pill.active {
-            background: rgba(255, 255, 255, 0.1);
-            color: #fafaf9;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
-        }
-
         /* ---- Tab content areas ---- */
         .tab-content {
             height: calc(100vh - 56px);
@@ -417,6 +383,9 @@
             display: flex;
             align-items: center;
             gap: 6px;
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
         }
 
         .profile-select {
@@ -577,17 +546,10 @@
         </div>
 
         <!-- Profile Selector -->
-        <div class="profile-selector-wrap">
+        <div class="profile-selector-wrap" id="header-profile-selector">
             <select id="profile-select" class="profile-select" onchange="onProfileChanged()">
                 <option value="kid_1">Loading...</option>
             </select>
-            <button class="btn-add-profile" onclick="showNewProfileModal()" title="Add New Profile">+</button>
-        </div>
-
-        <!-- Mode Toggle -->
-        <div class="mode-toggle" id="mode-toggle">
-            <button class="mode-pill active" id="mode-facts" onclick="setMode('facts')">Facts Only</button>
-            <button class="mode-pill" id="mode-creative" onclick="setMode('creative')">Creative Mode</button>
         </div>
 
         <!-- Pill Tab Switcher -->
@@ -659,27 +621,16 @@
         // Initialize Icons
         lucide.createIcons();
 
-        // ---- Mode Toggle (Facts Only vs Creative) ----
-        let currentMode = localStorage.getItem('socratoys_mode') || 'facts';
-
-        function setMode(mode) {
-            currentMode = mode;
-            localStorage.setItem('socratoys_mode', mode);
-            document.getElementById('mode-facts').classList.toggle('active', mode === 'facts');
-            document.getElementById('mode-creative').classList.toggle('active', mode === 'creative');
-        }
-
-        // Initialize toggle visual state from localStorage on page load
-        setMode(currentMode);
-
         // ---- Active Profile Management ----
         let currentUserId = localStorage.getItem('socratoys_userId') || 'kid_1';
+        let allProfilesData = []; // Cache loaded profiles to extract preferences
 
         async function loadProfiles() {
             try {
                 const res = await fetch('/api/profiles');
                 const data = await res.json();
                 if (data.success && data.profiles) {
+                    allProfilesData = data.profiles;
                     const select = document.getElementById('profile-select');
                     select.innerHTML = '';
                     data.profiles.forEach(p => {
@@ -696,16 +647,53 @@
                         select.value = currentUserId;
                         localStorage.setItem('socratoys_userId', currentUserId);
                     }
+                    
+                    // Parse preferences for the initially selected profile
+                    updateCurrentUserPreferences();
                 }
             } catch (e) {
                 console.error('Failed to load profiles', e);
             }
         }
 
-        function onProfileChanged() {
+        function updateCurrentUserPreferences() {
+            const activeProfile = allProfilesData.find(p => p.user_id === currentUserId);
+            try {
+                if (activeProfile && activeProfile.preferences) {
+                    currentUserPreferences = JSON.parse(activeProfile.preferences);
+                    console.log("[Profile] Loaded Topic Preferences:", currentUserPreferences);
+                } else {
+                    currentUserPreferences = null;
+                }
+            } catch (e) {
+                console.error("[Profile] Failed to parse preferences:", e);
+                currentUserPreferences = null;
+            }
+        }
+
+        async function onProfileChanged() {
             currentUserId = document.getElementById('profile-select').value;
             localStorage.setItem('socratoys_userId', currentUserId);
             console.log('[Profile] Switched to:', currentUserId);
+
+            // Re-fetch fresh profiles from server so preferences reflect latest admin edits
+            try {
+                const res = await fetch('/api/profiles');
+                const data = await res.json();
+                if (data.success && data.profiles) {
+                    allProfilesData = data.profiles;
+                }
+            } catch (e) {
+                console.warn('[Profile] Failed to refresh profiles:', e);
+            }
+
+            updateCurrentUserPreferences();
+
+            await fetchAgentPrompts(); // reload prompts for new profile
+            // If agent is active, disconnect so next session starts fresh with new kid's settings
+            if (isConnected) {
+                disconnect();
+            }
         }
 
         function showNewProfileModal() {
@@ -755,11 +743,14 @@
             const btnAgent = document.getElementById('maintab-agent');
             const btnAdmin = document.getElementById('maintab-admin');
 
+            const profileSelector = document.getElementById('header-profile-selector');
+
             if (tab === 'admin') {
                 agentTab.style.display = 'none';
                 adminTab.style.display = 'flex';
                 btnAgent.classList.remove('active');
                 btnAdmin.classList.add('active');
+                if (profileSelector) profileSelector.style.display = 'none';
                 // Lazy-load the iframe only on first visit
                 if (!adminLoaded) {
                     document.getElementById('admin-iframe').src = 'admin.html';
@@ -770,13 +761,14 @@
                 agentTab.style.display = 'flex';
                 btnAdmin.classList.remove('active');
                 btnAgent.classList.add('active');
+                if (profileSelector) profileSelector.style.display = 'flex';
             }
         }
 
         // Dynamically overwrite static LLM instructions with active Database Prompts
         async function fetchAgentPrompts() {
             try {
-                const res = await fetch('/api/prompts');
+                const res = await fetch('/api/prompts?userId=' + currentUserId);
                 const data = await res.json();
                 if (data.success && data.prompts) {
                     data.prompts.forEach(p => {
@@ -820,8 +812,9 @@
 
         const AGENT_PROFILES = {
             router: {
+                name: "Cosmo",
                 model: "gpt-4o-mini",
-                prompt: `You are the friendly greeter and conversation router for Socratoys, a learning companion for children aged 5 to 10.
+                prompt: `You are Cosmo, the friendly greeter and conversation router for Socratoys, a learning companion for children aged 5 to 10.
 
 ROLE
 Your job is to warmly welcome the child, share a fun fact to spark curiosity, and then figure out what they want to do: learn about something cool, or talk through something on their mind.
@@ -844,6 +837,7 @@ ROUTING RULES
 - If the child wants to talk about a problem, situation, or feelings -> route_to_brainstorm
 - If the child says "tell me more" about the fun fact -> route_to_knowledge with the fact as context
 - Always include context about what the child said when routing, so the next agent can pick up naturally.
+- If the child is unsure, suggest 2-3 topics from the PARENT-APPROVED TOPICS list (injected above). Do NOT suggest topics that are not in that list.
 - Max 2-3 sentences per turn. One question at a time.
 
 SAFETY
@@ -868,8 +862,9 @@ SAFETY
                 ]
             },
             knowledge: {
+                name: "Nova",
                 model: "gpt-4o",
-                prompt: `You are a curious, enthusiastic learning companion for children aged 5 to 10. You can talk about ANY topic the child is interested in — science, history, space, animals, art, sports, music, nature, how things work, stories, and anything else.
+                prompt: `You are Nova, a curious, enthusiastic learning companion for children aged 5 to 10. You can talk about ANY topic the child is interested in — science, history, space, animals, art, sports, music, nature, how things work, stories, and anything else.
 
 SPEAKING STYLE
 Speak in short, clear sentences. Pause between ideas. Use simple words a 6-year-old would understand. Sound excited, warm, and encouraging. No asterisks, bullets, or markdown — just plain natural speech.
@@ -898,8 +893,13 @@ TEACHING TECHNIQUES
 - Never just dump facts — always connect to a question or comparison
 - Praise effort first, then gently guide when correcting
 
-SWITCHING
-- If the child wants to switch or go back: call route_to_router
+SWITCHING & TRANSITION STYLE
+When the child brings up something that warrants switching agents, NEVER do so abruptly.
+1. Acknowledge warmly first (1 sentence).
+2. Introduce the next agent by name and explain why they're the right fit.
+3. Then call the routing function.
+- Child has a problem or feelings → acknowledge, mention Sage by name, then call route_to_brainstorm
+- Child wants a full fresh start → mention Cosmo by name, then call route_to_router
 
 SAFETY
 - Keep all content age-appropriate for children 5-10
@@ -908,15 +908,21 @@ SAFETY
 - Avoid graphic or frightening descriptions`,
                 functions: [
                     {
+                        name: "route_to_brainstorm",
+                        description: "Route directly to Sage (Brainstorming Coach) when the child wants to talk through a problem, situation, or feelings.",
+                        parameters: { type: "object", properties: { reason: { type: "string", description: "Context about what the child wants to talk through" } }, required: ["reason"] }
+                    },
+                    {
                         name: "route_to_router",
-                        description: "Call this function to route the child back to the main menu if they want to switch activities or are done exploring.",
+                        description: "Route back to Cosmo (main menu) if the child wants to start over or is completely done.",
                         parameters: { type: "object", properties: { reason: { type: "string", description: "Why the child is being routed back" } }, required: ["reason"] }
                     }
                 ]
             },
             brainstorm: {
+                name: "Sage",
                 model: "gpt-4o",
-                prompt: `You are a warm, gentle Socratic coach and "thought partner" for children aged 5 to 10. You help kids think through situations, problems, and feelings — but you NEVER give direct solutions. You only ask questions, reflect what the child says, and help them find their OWN answers.
+                prompt: `You are Sage, a warm, gentle Socratic coach and "thought partner" for children aged 5 to 10. You help kids think through situations, problems, and feelings — but you NEVER give direct solutions. You only ask questions, reflect what the child says, and help them find their OWN answers.
 
 SPEAKING STYLE
 Speak in short, clear sentences. Pause between ideas. Use simple words a 6-year-old would understand. Sound warm, gentle, patient, and non-judgmental. No asterisks, bullets, or markdown — just plain natural speech.
@@ -939,34 +945,89 @@ SAFETY
 - If child mentions self-harm, abuse, being hurt, or serious bullying: respond calmly, encourage telling a trusted adult immediately, never ask for identifying details.
 - Keep all content age-appropriate. Do NOT ask for personal details.
 
-SWITCHING
-- If the child wants to learn about a topic instead: call route_to_router`,
+SWITCHING & TRANSITION STYLE
+When the child brings up something that warrants switching agents, NEVER do so abruptly.
+1. Acknowledge warmly first (1 sentence — celebrate what the child has shared or thought through).
+2. Introduce the next agent by name and explain why they're the right fit.
+3. Then call the routing function.
+- Child wants to learn something → celebrate their thinking, mention Nova by name, then call route_to_knowledge
+- Child wants a full fresh start → mention Cosmo by name, then call route_to_router`,
                 functions: [
                     {
+                        name: "route_to_knowledge",
+                        description: "Route directly to Nova (Knowledge Explorer) when the child wants to learn about a topic.",
+                        parameters: { type: "object", properties: { reason: { type: "string", description: "What topic the child wants to learn about" } }, required: ["reason"] }
+                    },
+                    {
                         name: "route_to_router",
-                        description: "Call this function to route the child back to the main menu if they want to switch activities or are done talking.",
+                        description: "Route back to Cosmo (main menu) if the child wants to start over or is completely done.",
                         parameters: { type: "object", properties: { reason: { type: "string", description: "Why the child is being routed back" } }, required: ["reason"] }
                     }
                 ]
             }
         };
 
-        function getAgentSettings(profileId, historyMessages = [], longTermMemory = "", isHotSwap = false) {
+        function getAgentSettings(profileId, historyMessages = [], longTermMemory = "", isHotSwap = false, kidPreferences = null) {
             const profile = AGENT_PROFILES[profileId];
             if (!profile) throw new Error("Unknown Agent Profile: " + profileId);
 
-            let injectedPrompt = profile.prompt;
+            // ── NAME GUARANTEE ─────────────────────────────────────────────────────────
+            // The DB-loaded prompt (from Prompt Tuning) may not include the agent's name.
+            // Prepending the identity line here ensures the LLM always knows who it is,
+            // regardless of what text is stored in the database.
+            const agentNeighbours = {
+                router:      { knowledge: 'Nova', brainstorm: 'Sage' },
+                knowledge:   { brainstorm: 'Sage', router: 'Cosmo' },
+                brainstorm:  { knowledge: 'Nova', router: 'Cosmo' }
+            };
+            const neighbours = agentNeighbours[profileId] || {};
+            const neighboursLine = Object.entries(neighbours)
+                .map(([id, name]) => `${name} (${id})`)
+                .join(', ');
+
+            let injectedPrompt =
+                `[SYSTEM IDENTITY — NON-NEGOTIABLE]\n` +
+                `Your name is ${profile.name}. Always introduce yourself as "${profile.name}" and ONLY as "${profile.name}". Never use any other name.\n` +
+                `Your companion agents are: ${neighboursLine}. Always refer to them by their correct names when mentioning or handing off to them.\n\n` +
+                `[TRANSITION STYLE — ALWAYS FOLLOW]\n` +
+                `When the child brings up a topic that belongs to a different agent, NEVER switch abruptly.\n` +
+                `Instead: (1) Acknowledge the new topic warmly in 1 sentence. (2) Bridge naturally: tell them who they're going to and why that person is great for this. (3) THEN call the routing function.\n` +
+                `Example: "Oh, that sounds like something you really want to talk through! Sage is brilliant at helping kids think things through — I'll pass you over to Sage right now."\n\n` +
+                profile.prompt;
+
+            // Inject Topic Preferences Layer
+            if (kidPreferences) {
+                const hasAllowed = kidPreferences.allowed && kidPreferences.allowed.length > 0;
+                const hasBlocked = kidPreferences.blocked && kidPreferences.blocked.length > 0;
+
+                if (hasAllowed || hasBlocked) {
+                    let prefsBlock = `[PARENT-CONFIGURED TOPIC PREFERENCES — APPLY THROUGHOUT THIS SESSION]\n`;
+                    prefsBlock += `PRIORITY RULE: The ALLOWED list always takes precedence over the BLOCKED list. If a topic appears in ALLOWED, it is explicitly approved by the parent — do NOT block it, even if it might seem like it overlaps with something in the BLOCKED list.\n\n`;
+
+                    if (hasAllowed) {
+                        const sample = kidPreferences.allowed.slice(0, 5).join(', ');
+                        prefsBlock +=
+                            `PARENT-APPROVED TOPICS (these are explicitly allowed — engage with them freely): ${kidPreferences.allowed.join(', ')}\n` +
+                            `→ Actively use these topics as your suggestion pool. When offering choices, pick from this list (e.g. "Want to explore ${sample}?").\n` +
+                            `→ If the child is unsure what to talk about, suggest 2-3 options from this list.\n` +
+                            `→ If the child asks about something that matches an ALLOWED topic, engage with it fully and naturally — do NOT redirect to a grown-up.\n` +
+                            `→ Topics not in this list are neutral — allow them if the child brings them up naturally, as long as they're not blocked.\n`;
+                    }
+
+                    if (hasBlocked) {
+                        prefsBlock +=
+                            `BLOCKED TOPICS (only block these if they are NOT covered by an ALLOWED topic above): ${kidPreferences.blocked.join(', ')}\n` +
+                            `→ If the child brings up something that is ONLY in the blocked list (and not in the allowed list), gently redirect: "That's something to talk about with a grown-up you trust. What else are you curious about? We could explore ${hasAllowed ? kidPreferences.allowed.slice(0, 2).join(' or ') : 'something fun together'}!"\n` +
+                            `→ Do NOT apply blocked categories to topics that are explicitly covered by the ALLOWED list above.\n`;
+                    }
+
+                    injectedPrompt = prefsBlock + `\n` + injectedPrompt;
+                }
+            }
 
             // Inject long-term memory at the top
             if (longTermMemory) {
-                injectedPrompt = `SYSTEM NOTE - LONG TERM USER MEMORY:\\n${longTermMemory}\\n\\n${injectedPrompt}`;
-            }
-
-            // Inject mode prefix (Facts Only vs Creative)
-            if (currentMode === 'creative') {
-                injectedPrompt = `MODE: CREATIVE EXPLORATION\nYou may build imaginary scenarios with the child and go along with creative "what-if" questions. Use fictional framing to teach real concepts. For example, if the child asks "what if dinosaurs were still alive?", engage with the scenario enthusiastically while weaving in real facts about dinosaurs and evolution. Make learning magical and imaginative.\n\n${injectedPrompt}`;
-            } else {
-                injectedPrompt = `MODE: FACTS ONLY\nYou must be strictly factual and educational. Do NOT create imaginary scenarios, fictional stories, or make-believe situations. If the child asks "what if" questions about impossible things, gently redirect to how things really work in the real world. Keep everything grounded in real facts and real explanations.\n\n${injectedPrompt}`;
+                injectedPrompt = `SYSTEM NOTE - LONG TERM USER MEMORY:\n${longTermMemory}\n\n${injectedPrompt}`;
             }
 
             // On handoff: append a HANDOFF CONTEXT block so the LLM picks up the thread naturally
@@ -990,7 +1051,7 @@ RECENT CONVERSATION:
 ${conversationRecap}
 
 YOUR FIRST RESPONSE MUST:
-1. Briefly introduce yourself in ONE short sentence (e.g., "Hey there, I'm here to help!")
+1. Introduce yourself by name in ONE warm sentence: e.g. "Hi! I'm ${profile.name}!"
 2. Reference the specific topic from the previous agent's last message: "${lastAssistantMsg ? lastAssistantMsg.content.substring(0, 150) : 'unknown'}"
 3. IMMEDIATELY continue teaching MORE about that exact topic — share a new fact, expand on it, or ask an engaging follow-up question
 
@@ -999,7 +1060,9 @@ WHAT NOT TO DO:
 - Do NOT repeat what the previous agent already shared
 - Do NOT just acknowledge and then wait — KEEP TEACHING
 - Do NOT give a generic greeting — be specific to the topic
-
+${kidPreferences && kidPreferences.allowed && kidPreferences.allowed.length > 0
+    ? `\nTOPIC SUGGESTION POOL (use these when offering the child choices): ${kidPreferences.allowed.slice(0, 6).join(', ')}`
+    : ''}
 The child said "${lastUserMsg ? lastUserMsg.content : 'tell me more'}" which means they want you to CONTINUE explaining the topic, not start over.`;
             }
 
@@ -1046,8 +1109,21 @@ The child said "${lastUserMsg ? lastUserMsg.content : 'tell me more'}" which mea
         let playbackSession = 0; // Ensures old agent audio queues are invalidated when the user speaks
         let activeSources = []; // Tracks currently playing audio nodes so we can stop them on barge-in
         let currentSessionId = null; // Analytics tracking ID
+
+        // Greeting guard — the fun fact intro should only happen once per conversation sitting.
+        // If the router is called again after a handoff back, skip the fact and go straight to routing.
+        let greetingDelivered = false;
+
+        // Silence engagement detection
+        let lastAgentText = '';       // Last agent utterance — used to check if it ended with a question
+        let silenceTimer = null;      // Timer to nudge kid if they don't respond after a statement
+        let consecutiveNudges = 0;    // Nudges since last real user response (capped at 1 — no back-to-back nudges)
+        let nudgeWaitingForResponse = false; // True after a nudge fires, used to classify engagement on next user turn
         let currentLongTermMemory = ""; // Cached memory so hot-swapped agents get the context too
         let conversationHistory = []; // In-memory conversation tracking for seamless handoff (avoids DB race conditions)
+        let currentProfileId = 'router'; // Tracks the active agent profile for handoff logging
+        let currentMode = localStorage.getItem('socratoys_mode') || 'facts'; // Active mode for analytics tracking
+        let currentUserPreferences = null; // Cached parsed JSON preferences for the active kid
 
         // UI Elements
         const orb = document.getElementById('agent-orb');
@@ -1097,17 +1173,34 @@ The child said "${lastUserMsg ? lastUserMsg.content : 'tell me more'}" which mea
 
         async function connect(profileId = 'router', historyMessages = [], isHotSwap = false) {
             try {
-                // Ensure voice provider adapter is loaded
-                if (!voiceProvider) {
-                    await loadVoiceProvider();
+                currentProfileId = profileId; // Track for handoff logging
+
+                // Ensure config is loaded (needed to know which provider to use)
+                if (!voiceProviderConfig) {
+                    await loadVoiceProvider(); // loads config + creates initial instance
                 }
 
                 if (!isHotSwap) {
+                    // Fresh session — reset greeting guard so the fact plays on first connect
+                    greetingDelivered = false;
+
                     // Generate a unique analytics session ID whenever we connect fresh
                     currentSessionId = "SESSION_" + Date.now() + "_" + Math.floor(Math.random() * 1000);
 
+                    // Seed a minimal analytics row immediately — guarantees agent_type is recorded
+                    // even if the session ends abruptly before Gemini summarization completes
+                    fetch('/api/session-start', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ sessionId: currentSessionId, userId: currentUserId, agentType: profileId, mode: currentMode })
+                    }).catch(err => console.warn('[Session] Failed to seed analytics stub:', err));
+
                     // Fetch SQLite agent tuning Prompts dynamically
                     await fetchAgentPrompts();
+
+                    // Re-sync preferences at connect time — guards against timing issues
+                    // where onProfileChanged() was still in-flight when Connect was pressed
+                    updateCurrentUserPreferences();
 
                     // Fetch Long-Term Memory safely
                     currentLongTermMemory = await fetchLongTermMemory(currentUserId);
@@ -1131,7 +1224,7 @@ The child said "${lastUserMsg ? lastUserMsg.content : 'tell me more'}" which mea
                 }
 
                 // Build provider-agnostic agent config from AGENT_PROFILES
-                const agentSettings = getAgentSettings(profileId, historyMessages, currentLongTermMemory, isHotSwap);
+                const agentSettings = getAgentSettings(profileId, historyMessages, currentLongTermMemory, isHotSwap, currentUserPreferences);
                 const profile = AGENT_PROFILES[profileId];
                 const agentConfig = {
                     agentId: profileId,
@@ -1142,8 +1235,10 @@ The child said "${lastUserMsg ? lastUserMsg.content : 'tell me more'}" which mea
                     isHotSwap: isHotSwap
                 };
 
-                // Create a fresh adapter instance for each connection (hot-swap needs a new WebSocket)
-                if (isHotSwap) {
+                // Always create a fresh adapter instance to prevent stale event listener accumulation.
+                // Hot-swap also needs a new WebSocket; fresh connect needs a clean listener slate
+                // (reusing the same instance across connects causes duplicate events — every on() adds another handler).
+                {
                     const providerName = voiceProviderConfig.VOICE_PROVIDER || 'deepgram';
                     const module = providerName === 'gemini'
                         ? await import('/voice-providers/gemini-adapter.js')
@@ -1222,6 +1317,10 @@ The child said "${lastUserMsg ? lastUserMsg.content : 'tell me more'}" which mea
                     updateOrbState('listening');
                     playbackSession++;
 
+                    // Cancel any pending engagement nudge — user is speaking
+                    clearTimeout(silenceTimer);
+                    silenceTimer = null;
+
                     activeSources.forEach(source => {
                         try { source.stop(); } catch (e) { }
                     });
@@ -1243,12 +1342,74 @@ The child said "${lastUserMsg ? lastUserMsg.content : 'tell me more'}" which mea
                 voiceProvider.on('agent-audio-done', () => {
                     updateOrbState('listening');
 
-                    // If we have a pending hot-swap, execute it NOW
+                    // If we have a pending hot-swap, wait for any remaining buffered audio to fully
+                    // play out before swapping — prevents the last word(s) getting cut off.
                     if (window.pendingHandoff) {
-                        console.log("[Handoff] Transition phrase complete. Executing hot-swap.");
                         const target = window.pendingHandoff;
                         window.pendingHandoff = null;
-                        handleAgentHandoff(target);
+
+                        // nextPlayTime is the scheduled end of the last audio chunk.
+                        // Wait until that time has passed, plus a small 250ms safety buffer.
+                        const remaining = audioContext
+                            ? Math.max(0, nextPlayTime - audioContext.currentTime)
+                            : 0;
+                        const waitMs = Math.round(remaining * 1000) + 250;
+                        console.log(`[Handoff] Audio draining — waiting ${waitMs}ms before hot-swap.`);
+                        setTimeout(() => handleAgentHandoff(target), waitMs);
+                        return;
+                    }
+
+                    // Silence engagement detection:
+                    // If agent's last utterance was NOT a question, wait 5s — if kid stays silent,
+                    // nudge them by injecting "tell me more" so the agent continues naturally.
+                    clearTimeout(silenceTimer);
+                    silenceTimer = null;
+
+                    const endsWithQuestion = lastAgentText.trimEnd().endsWith('?');
+                    if (!endsWithQuestion) {
+                        if (consecutiveNudges < 1) {
+                            // First nudge — wait 12 seconds to give the kid real time to process and respond
+                            silenceTimer = setTimeout(() => {
+                                silenceTimer = null;
+                                if (!isConnected || window.pendingHandoff) return;
+
+                                consecutiveNudges++;
+                                nudgeWaitingForResponse = true;
+                                console.log(`[Engagement] 12s silence after statement. Nudge #${consecutiveNudges} — injecting continuation.`);
+
+                                // Log nudge event for analytics
+                                if (currentSessionId) {
+                                    fetch('/api/logs', {
+                                        method: 'POST',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({
+                                            sessionId: currentSessionId,
+                                            role: 'system',
+                                            content: `[ENGAGEMENT_NUDGE] silence after non-question — injecting continuation`,
+                                            userId: currentUserId
+                                        })
+                                    }).catch(() => {});
+                                }
+
+                                // Simulate the kid asking for more — LLM generates natural topic continuation
+                                voiceProvider.injectUserMessage('tell me more');
+                            }, 12000);
+                        } else {
+                            // Already nudged once with no real user response — log disengagement, stop nudging
+                            console.log(`[Engagement] Kid did not respond after nudge — disengagement detected.`);
+                            if (currentSessionId) {
+                                fetch('/api/logs', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({
+                                        sessionId: currentSessionId,
+                                        role: 'system',
+                                        content: `[ENGAGEMENT_DISENGAGED] no response after nudge — topic interest low`,
+                                        userId: currentUserId
+                                    })
+                                }).catch(() => {});
+                            }
+                        }
                     }
                 });
 
@@ -1260,30 +1421,59 @@ The child said "${lastUserMsg ? lastUserMsg.content : 'tell me more'}" which mea
                     console.log(`[Function Hit] ${funcData.name}`, funcData.arguments);
 
                     if (funcData.name === 'generate_greeting') {
-                        try {
-                            let userId = currentUserId;
-                            try { userId = JSON.parse(funcData.arguments).user_id || currentUserId; } catch (_) { }
-
-                            const greetRes = await fetch('/api/greeting', {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ userId })
-                            });
-                            const { greeting } = await greetRes.json();
-                            voiceProvider.sendFunctionResponse(funcData.id, funcData.name, greeting);
-                            console.log(`[Greeting] Delivered fact to router: "${greeting}"`);
-                        } catch (err) {
-                            console.error('[Greeting] Failed, sending fallback.', err);
+                        if (greetingDelivered) {
+                            // Router was called again mid-conversation (e.g. after a handoff back).
+                            // Skip the fact — just tell the agent to go straight to routing.
+                            console.log(`[Greeting] Skipping — fact already delivered this session.`);
                             voiceProvider.sendFunctionResponse(
                                 funcData.id, funcData.name,
-                                "Did you know that a group of flamingos is called a flamboyance? Pretty fancy name for some pink birds!"
+                                "SKIP_FACT: The child already heard a fun fact today. Say a brief friendly welcome back (one sentence only) then immediately ask: 'So, do you want to keep learning or talk about something?'"
                             );
+                        } else {
+                            try {
+                                let userId = currentUserId;
+                                try { userId = JSON.parse(funcData.arguments).user_id || currentUserId; } catch (_) { }
+
+                                const greetRes = await fetch('/api/greeting', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ userId })
+                                });
+                                const { greeting } = await greetRes.json();
+                                greetingDelivered = true;
+                                voiceProvider.sendFunctionResponse(funcData.id, funcData.name, greeting);
+                                console.log(`[Greeting] Delivered fact to router: "${greeting}"`);
+                            } catch (err) {
+                                console.error('[Greeting] Failed, sending fallback.', err);
+                                greetingDelivered = true;
+                                voiceProvider.sendFunctionResponse(
+                                    funcData.id, funcData.name,
+                                    "Did you know that a group of flamingos is called a flamboyance? Pretty fancy name for some pink birds!"
+                                );
+                            }
                         }
                     } else {
-                        // Routing function: acknowledge, let agent say goodbye, then hot-swap
+                        // Routing function — build a personalised handoff announcement with the next agent's name
+                        const routeTargetMap = {
+                            'route_to_knowledge': 'knowledge',
+                            'route_to_brainstorm': 'brainstorm',
+                            'route_to_router': 'router',
+                            'report_engagement_drop': 'router'
+                        };
+                        const nextAgentId = routeTargetMap[funcData.name] || 'router';
+                        const nextAgentName = AGENT_PROFILES[nextAgentId]?.name || 'your next friend';
+                        const agentIntroLines = {
+                            knowledge: `${nextAgentName} is brilliant at exploring cool facts and explaining how the world works!`,
+                            brainstorm: `${nextAgentName} is amazing at helping you think through problems and find your own answers!`,
+                            router: `${nextAgentName} can help you decide what you'd like to do next!`
+                        };
+                        const nextIntro = agentIntroLines[nextAgentId] || `${nextAgentName} is ready to help you!`;
+
+                        // The agent already said the goodbye BEFORE calling this function (per prompt instructions).
+                        // Do NOT ask for another goodbye — just acknowledge and stop speaking to trigger audio-done + handoff.
                         voiceProvider.sendFunctionResponse(
                             funcData.id, funcData.name,
-                            'Transition acknowledged. Say a very short 1-sentence goodbye or handoff phrase and stop.'
+                            `Transition acknowledged. You have already said your goodbye — do NOT say anything more. Stop speaking now so the handoff can happen.`
                         );
                         window.pendingHandoff = funcData.name;
 
@@ -1294,7 +1484,7 @@ The child said "${lastUserMsg ? lastUserMsg.content : 'tell me more'}" which mea
                                 window.pendingHandoff = null;
                                 handleAgentHandoff(funcData.name);
                             }
-                        }, 4000);
+                        }, 3000); // 3s fallback — agent should go silent quickly since we told it not to speak
                     }
                 });
 
@@ -1306,6 +1496,35 @@ The child said "${lastUserMsg ? lastUserMsg.content : 'tell me more'}" which mea
                         content: data.content
                     });
 
+                    if (data.role === 'agent') {
+                        // Track for silence detection (agent-audio-done checks this)
+                        lastAgentText = data.content;
+                    } else if (data.role === 'user') {
+                        // Real user spoke — cancel any pending timer
+                        clearTimeout(silenceTimer);
+                        silenceTimer = null;
+
+                        // If this response came after a nudge, classify as engaged; reset counter
+                        if (nudgeWaitingForResponse) {
+                            nudgeWaitingForResponse = false;
+                            console.log(`[Engagement] User responded after nudge — topic is engaging.`);
+                            if (currentSessionId) {
+                                fetch('/api/logs', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({
+                                        sessionId: currentSessionId,
+                                        role: 'system',
+                                        content: `[ENGAGEMENT_RESPONDED] user replied after nudge — topic interest confirmed`,
+                                        userId: currentUserId
+                                    })
+                                }).catch(() => {});
+                            }
+                        }
+                        // Reset nudge counter — real user response opens the door for one more nudge if needed
+                        consecutiveNudges = 0;
+                    }
+
                     // Save to Analytics Database (fire and forget)
                     if (currentSessionId) {
                         fetch('/api/logs', {
@@ -1314,7 +1533,8 @@ The child said "${lastUserMsg ? lastUserMsg.content : 'tell me more'}" which mea
                             body: JSON.stringify({
                                 sessionId: currentSessionId,
                                 role: data.role,
-                                content: data.content
+                                content: data.content,
+                                userId: currentUserId
                             })
                         }).catch(err => console.error("Analytics save failed", err));
                     }
@@ -1346,7 +1566,11 @@ The child said "${lastUserMsg ? lastUserMsg.content : 'tell me more'}" which mea
             // Trigger Auto-Summarize in the background before clearing the ID
             if (currentSessionId) {
                 console.log(`[Analytics] Triggering Auto-Summarize for session ${currentSessionId}...`);
-                fetch(`/api/conversations/${currentSessionId}/summarize`, { method: 'POST' })
+                fetch(`/api/conversations/${currentSessionId}/summarize`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ user_id: currentUserId })
+                })
                     .then(res => res.json())
                     .then(data => console.log("[Analytics] Auto-Summarize complete:", data))
                     .catch(err => console.error("[Analytics] Auto-Summarize failed:", err));
@@ -1391,6 +1615,13 @@ The child said "${lastUserMsg ? lastUserMsg.content : 'tell me more'}" which mea
             nextPlayTime = 0;
             conversationHistory = []; // Clear in-memory history for next session
 
+            // Clear engagement state
+            clearTimeout(silenceTimer);
+            silenceTimer = null;
+            lastAgentText = '';
+            consecutiveNudges = 0;
+            nudgeWaitingForResponse = false;
+
             console.log("Fully disconnected hardware and voice provider.");
         }
 
@@ -1402,8 +1633,9 @@ The child said "${lastUserMsg ? lastUserMsg.content : 'tell me more'}" which mea
          * Format: { type: "History", role, content } - Deepgram REQUIRES type: "History"!
          */
         function getHistoryForHandoff() {
-            // Filter empty messages and limit to last 20 to avoid context overflow
-            const MAX_HISTORY_MESSAGES = 20;
+            // Cap at 10 messages — when a summary is also passed the new agent needs even less raw history.
+            // This prevents context bloat across 3+ agent handoffs in a single sitting.
+            const MAX_HISTORY_MESSAGES = 10;
             const safeHistory = conversationHistory
                 .filter(msg => msg.content && msg.content.trim().length > 0)
                 .slice(-MAX_HISTORY_MESSAGES);
@@ -1461,18 +1693,40 @@ The child said "${lastUserMsg ? lastUserMsg.content : 'tell me more'}" which mea
             let historyToPass = getHistoryForHandoff();
             console.log(`[Handoff] Passing ${historyToPass.length} messages to new agent as context.`);
 
-            // Optional: Get a summarized version for long conversations
+            // Log the agent transition into the shared session transcript so the full
+            // conversation (all agents) is visible as one continuous record in the dashboard.
+            const outgoingAgent = AGENT_PROFILES[currentProfileId]?.name || currentProfileId || 'previous agent';
+            const incomingAgent = AGENT_PROFILES[targetProfile]?.name || targetProfile;
+            if (currentSessionId) {
+                fetch('/api/logs', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        sessionId: currentSessionId,
+                        role: 'system',
+                        content: `[AGENT_SWITCH] ${outgoingAgent} → ${incomingAgent}`,
+                        userId: currentUserId
+                    })
+                }).catch(() => {});
+            }
+
+            // Get a summarized version of the conversation for handoff context (does NOT save to DB)
             const summary = await summarizeConversationForHandoff();
 
-            // Track the outgoing agent as a discrete completed session on the Admin Dashboard
-            if (currentSessionId) {
-                console.log(`[Analytics] Requesting background summary for outgoing Session ID: ${currentSessionId}`);
-                fetch(`/api/conversations/${currentSessionId}/summarize`, { method: 'POST' })
-                    .catch(err => console.error("Summary request failed", err));
+            // NOTE: We intentionally keep the SAME currentSessionId across handoffs.
+            // The entire sitting (all agents) is one session in the dashboard.
+            // Analytics summarization happens once at disconnect() — not here.
 
-                // Slice the session timeline so the incoming agent tracks analytics cleanly
-                currentSessionId = "SESSION_" + Date.now() + "_" + Math.floor(Math.random() * 1000);
-            }
+            // Reset engagement state for the incoming agent (new context = fresh slate)
+            clearTimeout(silenceTimer);
+            silenceTimer = null;
+            lastAgentText = '';
+            consecutiveNudges = 0;
+            nudgeWaitingForResponse = false;
+
+            // Refresh long-term memory from DB so the new agent gets the latest facts
+            currentLongTermMemory = await fetchLongTermMemory(currentUserId);
+            console.log(`[Memory] Refreshed ${currentLongTermMemory.split(' ').filter(Boolean).length} facts for incoming agent`);
 
             // Store summary in history context if available (prepend as system-like context)
             if (summary) {
@@ -1489,7 +1743,7 @@ The child said "${lastUserMsg ? lastUserMsg.content : 'tell me more'}" which mea
                 voiceProvider.disconnect();
             }
 
-            // Wait a tiny fraction of a second to ensure smooth socket drop 
+            // Wait a tiny fraction of a second to ensure smooth socket drop
             await new Promise(r => setTimeout(r, 50));
             console.log(`[Handoff] Previous agent connection terminated.`);
 
@@ -1529,7 +1783,7 @@ The child said "${lastUserMsg ? lastUserMsg.content : 'tell me more'}" which mea
         }
 
         // Audio Scheduling Queue
-        const TTS_PLAYBACK_RATE = 0.85;
+        const TTS_PLAYBACK_RATE = 1.0; // Default speed — 0.9 caused static artifacts in Web Audio API resampling
         let nextPlayTime = 0;
 
         async function playBinaryAudio(arrayBuffer) {

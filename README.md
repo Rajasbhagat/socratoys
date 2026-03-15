@@ -74,6 +74,27 @@ For a detailed technical breakdown, please refer to our **[ARCHITECTURE.md](./AR
    # Edit .env and add your API keys
    ```
 
+## Deployment
+
+### Google Cloud (Cloud Run)
+
+The project is configured for one-click deployment to Google Cloud Run with SQLite persistence.
+
+#### Prerequisites
+1.  **Google Cloud SDK** installed and authenticated (`gcloud auth login`).
+2.  **Project ID** set in your environment or CLI.
+
+#### Deploying
+Simply run:
+```bash
+npm run deploy:gcp
+```
+
+This script will:
+1.  Build a Docker container from the `Dockerfile`.
+2.  Create a Cloud Storage bucket (`socratoys-db-persistence`) for your database.
+3.  Deploy to Cloud Run and mount the storage bucket so your data persists across restarts.
+
 4. Run the project:
    ```bash
    npm start

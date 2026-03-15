@@ -22,7 +22,8 @@ const __dirname = path.dirname(__filename);
 // DATABASE INITIALIZATION
 // =============================================================================
 
-const dbPath = path.resolve(__dirname, 'analytics.db');
+// Allow overriding the database path via environment variable (useful for Cloud Run volumes)
+const dbPath = process.env.DB_PATH || path.resolve(__dirname, 'analytics.db');
 const db = new sqlite3.Database(dbPath, (err) => {
     if (err) {
         console.error('Error opening database', err);
@@ -44,8 +45,14 @@ function initializeTables() {
         session_id TEXT NOT NULL,
         role TEXT NOT NULL,
         content TEXT NOT NULL,
+        user_id TEXT,
         timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
-    )`, logTableError('conversations'));
+    )`, (err) => {
+        if (err) console.error("Error creating conversations table", err);
+        else {
+            db.run("ALTER TABLE conversations ADD COLUMN user_id TEXT", () => {});
+        }
+    });
 
     // Table: sessions_meta - Stores Gemini AI analysis results
     db.run(`CREATE TABLE IF NOT EXISTS sessions_meta (
@@ -121,13 +128,17 @@ function initializeTables() {
         display_name TEXT NOT NULL,
         age INTEGER,
         avatar_color TEXT DEFAULT '#d946ef',
+        preferences TEXT,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         last_active DATETIME DEFAULT CURRENT_TIMESTAMP
     )`, (err) => {
         if (err) {
             console.error("Error creating child_profiles table", err);
         } else {
-            seedDefaultProfile();
+            // Graceful migration: add new preferences column if upgrading
+            db.run("ALTER TABLE child_profiles ADD COLUMN preferences TEXT", () => {
+                seedDefaultProfile();
+            });
         }
     });
 
@@ -156,6 +167,8 @@ function initializeTables() {
         if (err) {
             console.error("Error creating agent_prompts table", err);
         } else {
+            // Graceful migration: add user_id column for per-kid prompt support
+            db.run("ALTER TABLE agent_prompts ADD COLUMN user_id TEXT DEFAULT NULL", () => {});
             seedDefaultPrompts();
         }
     });
@@ -233,12 +246,13 @@ function seedDefaultPrompts() {
  * @param {string} sessionId - Unique session identifier
  * @param {string} role - Message role ('user' or 'assistant')
  * @param {string} content - Message content (should be markdown-stripped)
+ * @param {string} userId - ID of the kid profile
  * @returns {Promise<number>} The inserted row ID
  */
-function saveMessage(sessionId, role, content) {
+function saveMessage(sessionId, role, content, userId = 'kid_1') {
     return new Promise((resolve, reject) => {
-        const stmt = db.prepare('INSERT INTO conversations (session_id, role, content) VALUES (?, ?, ?)');
-        stmt.run([sessionId, role, content], function (err) {
+        const stmt = db.prepare('INSERT INTO conversations (session_id, role, content, user_id) VALUES (?, ?, ?, ?)');
+        stmt.run([sessionId, role, content, userId], function (err) {
             if (err) reject(err);
             else resolve(this.lastID);
         });
@@ -249,9 +263,10 @@ function saveMessage(sessionId, role, content) {
 /**
  * Get all conversation sessions with metadata for Admin dashboard.
  * Joins with sessions_meta for Gemini analysis results.
+ * @param {string} userId - ID of the kid profile to filter by
  * @returns {Promise<Array>} Array of session objects with message counts and metadata
  */
-function getSessions() {
+function getSessions(userId = 'kid_1') {
     return new Promise((resolve, reject) => {
         const query = `
             SELECT
@@ -267,10 +282,11 @@ function getSessions() {
                 m.user_facts
             FROM conversations c
             LEFT JOIN sessions_meta m ON c.session_id = m.session_id
+            WHERE c.user_id = ? OR (? = 'kid_1' AND c.user_id IS NULL)
             GROUP BY c.session_id
             ORDER BY last_activity DESC
         `;
-        db.all(query, [], (err, rows) => {
+        db.all(query, [userId, userId], (err, rows) => {
             if (err) reject(err);
             else resolve(rows);
         });
@@ -340,18 +356,82 @@ function saveSessionMeta(sessionId, title, topic, summary, engagementScore = nul
  * Get prompt improvement suggestions from past sessions.
  * @returns {Promise<Array>} Array of suggestions with topic and engagement context
  */
-function getPromptSuggestions() {
+function getPromptSuggestions(userId, agentId) {
     return new Promise((resolve, reject) => {
-        const query = `
-            SELECT prompt_improvement_suggestion, topic, engagement_score, updated_at as created_at
-            FROM sessions_meta
-            WHERE prompt_improvement_suggestion IS NOT NULL
-            ORDER BY updated_at DESC
-            LIMIT 50
-        `;
-        db.all(query, [], (err, rows) => {
+        let query, params;
+        if (userId) {
+            const agentFilter = agentId ? ' AND sa.agent_type = ?' : '';
+            query = `
+                SELECT sm.prompt_improvement_suggestion, sm.topic, sm.engagement_score,
+                       sm.updated_at as created_at, sa.agent_type
+                FROM sessions_meta sm
+                LEFT JOIN session_analytics sa ON sm.session_id = sa.session_id
+                INNER JOIN (
+                    SELECT DISTINCT session_id FROM conversations
+                    WHERE user_id = ? OR (? = 'kid_1' AND user_id IS NULL)
+                ) c ON sm.session_id = c.session_id
+                WHERE sm.prompt_improvement_suggestion IS NOT NULL${agentFilter}
+                ORDER BY sm.updated_at DESC
+                LIMIT 30
+            `;
+            params = [userId, userId];
+            if (agentId) params.push(agentId);
+        } else {
+            const agentFilter = agentId ? ' AND sa.agent_type = ?' : '';
+            query = `
+                SELECT sm.prompt_improvement_suggestion, sm.topic, sm.engagement_score,
+                       sm.updated_at as created_at, sa.agent_type
+                FROM sessions_meta sm
+                LEFT JOIN session_analytics sa ON sm.session_id = sa.session_id
+                WHERE sm.prompt_improvement_suggestion IS NOT NULL${agentFilter}
+                ORDER BY sm.updated_at DESC
+                LIMIT 30
+            `;
+            params = agentId ? [agentId] : [];
+        }
+        db.all(query, params, (err, rows) => {
             if (err) reject(err);
             else resolve(rows);
+        });
+    });
+}
+
+/**
+ * Get per-agent session stats for a user.
+ * @param {string} userId - User identifier
+ * @param {string} agentType - Agent type (router, knowledge, brainstorm)
+ * @returns {Promise<Object>} Stats object with session_count, avg_engagement_score, etc.
+ */
+function getAgentStats(userId, agentType) {
+    return new Promise((resolve, reject) => {
+        const query = `
+            SELECT
+                COUNT(*) as session_count,
+                AVG(sm.engagement_score) as avg_engagement_score,
+                SUM(sa.child_question_count) as total_child_questions,
+                AVG(sa.on_task_ratio) as avg_on_task_ratio
+            FROM session_analytics sa
+            LEFT JOIN sessions_meta sm ON sa.session_id = sm.session_id
+            WHERE sa.user_id = ? AND sa.agent_type = ?
+        `;
+        db.get(query, [userId, agentType], (err, row) => {
+            if (err) reject(err);
+            else resolve(row || { session_count: 0, avg_engagement_score: null, total_child_questions: 0, avg_on_task_ratio: null });
+        });
+    });
+}
+
+/**
+ * Delete a user-specific agent prompt override, reverting to global default.
+ * @param {string} userId - User identifier
+ * @param {string} agentId - Agent identifier
+ * @returns {Promise<boolean>} Success indicator
+ */
+function deleteUserPrompt(userId, agentId) {
+    return new Promise((resolve, reject) => {
+        db.run('DELETE FROM agent_prompts WHERE agent_id = ? AND user_id = ?', [agentId, userId], function (err) {
+            if (err) reject(err);
+            else resolve(true);
         });
     });
 }
@@ -436,6 +516,53 @@ function getActivePrompts() {
         db.all(query, [], (err, rows) => {
             if (err) reject(err);
             else resolve(rows);
+        });
+    });
+}
+
+/**
+ * Get active prompts for a specific user, falling back to global prompts.
+ * User-specific prompts override global ones for the same agent_id.
+ * @param {string} userId - Child user ID
+ * @returns {Promise<Array>} Array of prompts with agent_id, prompt_text, version
+ */
+function getActivePromptsForUser(userId) {
+    return new Promise((resolve, reject) => {
+        const userQuery = 'SELECT agent_id, prompt_text, version, user_id FROM agent_prompts WHERE is_active = 1 AND user_id = ?';
+        db.all(userQuery, [userId], (err, userRows) => {
+            if (err) return reject(err);
+            const globalQuery = 'SELECT agent_id, prompt_text, version, NULL as user_id FROM agent_prompts WHERE is_active = 1 AND user_id IS NULL';
+            db.all(globalQuery, [], (err2, globalRows) => {
+                if (err2) return reject(err2);
+                const userAgentIds = new Set(userRows.map(r => r.agent_id));
+                const merged = [...userRows, ...globalRows.filter(r => !userAgentIds.has(r.agent_id))];
+                resolve(merged);
+            });
+        });
+    });
+}
+
+/**
+ * Save a user-specific agent prompt with version control.
+ * @param {string} userId - Child user ID
+ * @param {string} agentId - Agent identifier
+ * @param {string} promptText - New prompt content
+ * @returns {Promise<Object>} Object with agentId, userId, version, id
+ */
+function saveUserPrompt(userId, agentId, promptText) {
+    return new Promise((resolve, reject) => {
+        db.run('UPDATE agent_prompts SET is_active = 0 WHERE agent_id = ? AND user_id = ?', [agentId, userId], (err) => {
+            if (err) return reject(err);
+            db.get('SELECT MAX(version) as max_v FROM agent_prompts WHERE agent_id = ?', [agentId], (getErr, row) => {
+                if (getErr) return reject(getErr);
+                const nextVersion = (row && row.max_v ? row.max_v : 0) + 1;
+                const stmt = db.prepare('INSERT INTO agent_prompts (agent_id, user_id, version, prompt_text, is_active) VALUES (?, ?, ?, ?, 1)');
+                stmt.run([agentId, userId, nextVersion, promptText], function (insertErr) {
+                    if (insertErr) reject(insertErr);
+                    else resolve({ agentId, userId, version: nextVersion, id: this.lastID });
+                });
+                stmt.finalize();
+            });
         });
     });
 }
@@ -707,14 +834,15 @@ function getSafetyAlerts(userId) {
  * @param {string} displayName - Child's display name
  * @param {number|null} age - Child's age
  * @param {string} avatarColor - Hex color for avatar
+ * @param {string} preferences - JSON string format of topic preferences
  * @returns {Promise<boolean>} Success indicator
  */
-function createChildProfile(userId, displayName, age = null, avatarColor = '#d946ef') {
+function createChildProfile(userId, displayName, age = null, avatarColor = '#d946ef', preferences = '{}') {
     return new Promise((resolve, reject) => {
         const stmt = db.prepare(
-            'INSERT INTO child_profiles (user_id, display_name, age, avatar_color) VALUES (?, ?, ?, ?)'
+            'INSERT INTO child_profiles (user_id, display_name, age, avatar_color, preferences) VALUES (?, ?, ?, ?, ?)'
         );
-        stmt.run([userId, displayName, age, avatarColor], function (err) {
+        stmt.run([userId, displayName, age, avatarColor, preferences], function (err) {
             if (err) reject(err);
             else resolve(true);
         });
@@ -760,7 +888,7 @@ function getChildProfile(userId) {
 /**
  * Update a child profile's fields.
  * @param {string} userId - User identifier
- * @param {Object} fields - Fields to update { display_name?, age?, avatar_color? }
+ * @param {Object} fields - Fields to update { display_name?, age?, avatar_color?, preferences? }
  * @returns {Promise<boolean>} Success indicator
  */
 function updateChildProfile(userId, fields) {
@@ -770,6 +898,10 @@ function updateChildProfile(userId, fields) {
         if (fields.display_name !== undefined) { setClauses.push('display_name = ?'); values.push(fields.display_name); }
         if (fields.age !== undefined) { setClauses.push('age = ?'); values.push(fields.age); }
         if (fields.avatar_color !== undefined) { setClauses.push('avatar_color = ?'); values.push(fields.avatar_color); }
+        if (fields.preferences !== undefined) {
+            setClauses.push('preferences = ?');
+            values.push(typeof fields.preferences === 'string' ? fields.preferences : JSON.stringify(fields.preferences));
+        }
         if (setClauses.length === 0) return resolve(true);
         values.push(userId);
         db.run(`UPDATE child_profiles SET ${setClauses.join(', ')} WHERE user_id = ?`, values, (err) => {
@@ -898,6 +1030,29 @@ function rawDB() {
     return db;
 }
 
+/**
+ * Seed a minimal session_analytics row immediately when a session starts.
+ * Uses INSERT OR IGNORE so Gemini's full analysis can later UPSERT on top.
+ * This ensures agent_type is recorded even if summarization fails mid-session.
+ * @param {string} sessionId - Unique session identifier
+ * @param {string} userId - Child user ID
+ * @param {string} agentType - Agent profile (router, knowledge, brainstorm)
+ * @param {string|null} mode - Active mode (facts, creative)
+ * @returns {Promise<boolean>} Success indicator
+ */
+function seedSessionAnalytics(sessionId, userId, agentType, mode = null) {
+    return new Promise((resolve, reject) => {
+        db.run(
+            `INSERT OR IGNORE INTO session_analytics (session_id, user_id, agent_type, mode) VALUES (?, ?, ?, ?)`,
+            [sessionId, userId || null, agentType || null, mode || null],
+            function (err) {
+                if (err) reject(err);
+                else resolve(true);
+            }
+        );
+    });
+}
+
 export {
     saveMessage,
     getSessions,
@@ -908,8 +1063,12 @@ export {
     getAllMemoriesByUser,
     rawDB,
     getActivePrompts,
+    getActivePromptsForUser,
+    saveUserPrompt,
     updateAgentPrompt,
+    deleteUserPrompt,
     getPromptSuggestions,
+    getAgentStats,
     saveSessionAnalytics,
     upsertChildInterest,
     getEngagementTrends,
@@ -925,5 +1084,6 @@ export {
     touchProfileActivity,
     saveRecommendations,
     getRecommendations,
-    dismissRecommendation
+    dismissRecommendation,
+    seedSessionAnalytics
 };
