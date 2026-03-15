@@ -258,7 +258,7 @@ You must output a JSON object containing:
                         }
                     },
                     required: ["title", "topic", "summary", "user_facts", "engagement_score", "prompt_improvement_suggestion",
-                               "agent_type", "thinking_patterns", "behavioral_patterns", "engagement_signals", "interest_topics", "safety_alerts"]
+                        "agent_type", "thinking_patterns", "behavioral_patterns", "engagement_signals", "interest_topics", "safety_alerts"]
                 }
             }
         });
