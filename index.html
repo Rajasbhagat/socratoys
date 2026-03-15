@@ -412,6 +412,150 @@
             -ms-overflow-style: none;
             scrollbar-width: none;
         }
+        /* Profile Selector */
+        .profile-selector-wrap {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .profile-select {
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #e8e5e2;
+            font-size: 13px;
+            font-weight: 500;
+            border-radius: 8px;
+            padding: 6px 12px;
+            cursor: pointer;
+            outline: none;
+            appearance: none;
+            -webkit-appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23a8a29e' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 8px center;
+            padding-right: 28px;
+            transition: border-color 0.15s ease;
+        }
+
+        .profile-select:hover {
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .profile-select:focus {
+            border-color: rgba(217, 70, 239, 0.5);
+            box-shadow: 0 0 0 2px rgba(217, 70, 239, 0.1);
+        }
+
+        .btn-add-profile {
+            width: 30px;
+            height: 30px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: rgba(255, 255, 255, 0.06);
+            color: #a8a29e;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.15s ease;
+            font-size: 18px;
+            line-height: 1;
+        }
+
+        .btn-add-profile:hover {
+            background: rgba(217, 70, 239, 0.15);
+            border-color: rgba(217, 70, 239, 0.3);
+            color: #e879f9;
+        }
+
+        /* New Profile Modal */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(4px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .modal-card {
+            background: #1c1917;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 28px;
+            width: 360px;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5);
+        }
+
+        .modal-card h3 {
+            font-size: 17px;
+            font-weight: 700;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .modal-card input {
+            width: 100%;
+            padding: 10px 14px;
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 8px;
+            color: #e8e5e2;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.15s ease;
+            margin-bottom: 12px;
+            box-sizing: border-box;
+        }
+
+        .modal-card input:focus {
+            border-color: rgba(217, 70, 239, 0.5);
+        }
+
+        .modal-card input::placeholder {
+            color: rgba(255, 255, 255, 0.25);
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            margin-top: 8px;
+        }
+
+        .modal-btn {
+            padding: 8px 18px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            border: none;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .modal-btn-cancel {
+            background: rgba(255, 255, 255, 0.07);
+            color: #a8a29e;
+        }
+
+        .modal-btn-cancel:hover {
+            background: rgba(255, 255, 255, 0.12);
+        }
+
+        .modal-btn-create {
+            background: linear-gradient(135deg, #d946ef, #818cf8);
+            color: white;
+            box-shadow: 0 0 12px rgba(217, 70, 239, 0.25);
+        }
+
+        .modal-btn-create:hover {
+            opacity: 0.9;
+        }
     </style>
 </head>
 
@@ -430,6 +574,14 @@
                 </svg>
             </div>
             Socratoys
+        </div>
+
+        <!-- Profile Selector -->
+        <div class="profile-selector-wrap">
+            <select id="profile-select" class="profile-select" onchange="onProfileChanged()">
+                <option value="kid_1">Loading...</option>
+            </select>
+            <button class="btn-add-profile" onclick="showNewProfileModal()" title="Add New Profile">+</button>
         </div>
 
         <!-- Mode Toggle -->
@@ -482,6 +634,22 @@
         <div id="logs" class="log-container"></div>
     </div><!-- /tab-agent -->
 
+    <!-- New Profile Modal (hidden by default) -->
+    <div id="new-profile-modal" class="modal-overlay" style="display:none;">
+        <div class="modal-card">
+            <h3>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#d946ef" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+                New Child Profile
+            </h3>
+            <input type="text" id="new-profile-name" placeholder="Child's name" autocomplete="off" />
+            <input type="number" id="new-profile-age" placeholder="Age (optional)" min="1" max="18" />
+            <div class="modal-actions">
+                <button class="modal-btn modal-btn-cancel" onclick="hideNewProfileModal()">Cancel</button>
+                <button class="modal-btn modal-btn-create" onclick="createNewProfile()">Create Profile</button>
+            </div>
+        </div>
+    </div>
+
     <!-- ======== TAB: Admin Dashboard ======== -->
     <div id="tab-admin" class="tab-content" style="display:none;">
         <iframe id="admin-iframe" src="" title="Admin Dashboard"></iframe>
@@ -503,6 +671,81 @@
 
         // Initialize toggle visual state from localStorage on page load
         setMode(currentMode);
+
+        // ---- Active Profile Management ----
+        let currentUserId = localStorage.getItem('socratoys_userId') || 'kid_1';
+
+        async function loadProfiles() {
+            try {
+                const res = await fetch('/api/profiles');
+                const data = await res.json();
+                if (data.success && data.profiles) {
+                    const select = document.getElementById('profile-select');
+                    select.innerHTML = '';
+                    data.profiles.forEach(p => {
+                        const opt = document.createElement('option');
+                        opt.value = p.user_id;
+                        opt.textContent = p.display_name + (p.age ? ` (${p.age})` : '');
+                        select.appendChild(opt);
+                    });
+                    // Restore selected profile
+                    if (data.profiles.find(p => p.user_id === currentUserId)) {
+                        select.value = currentUserId;
+                    } else if (data.profiles.length > 0) {
+                        currentUserId = data.profiles[0].user_id;
+                        select.value = currentUserId;
+                        localStorage.setItem('socratoys_userId', currentUserId);
+                    }
+                }
+            } catch (e) {
+                console.error('Failed to load profiles', e);
+            }
+        }
+
+        function onProfileChanged() {
+            currentUserId = document.getElementById('profile-select').value;
+            localStorage.setItem('socratoys_userId', currentUserId);
+            console.log('[Profile] Switched to:', currentUserId);
+        }
+
+        function showNewProfileModal() {
+            document.getElementById('new-profile-modal').style.display = 'flex';
+            document.getElementById('new-profile-name').focus();
+        }
+
+        function hideNewProfileModal() {
+            document.getElementById('new-profile-modal').style.display = 'none';
+            document.getElementById('new-profile-name').value = '';
+            document.getElementById('new-profile-age').value = '';
+        }
+
+        async function createNewProfile() {
+            const name = document.getElementById('new-profile-name').value.trim();
+            const age = parseInt(document.getElementById('new-profile-age').value) || null;
+            if (!name) return alert('Please enter a name.');
+            try {
+                const res = await fetch('/api/profiles', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ display_name: name, age })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    currentUserId = data.user_id;
+                    localStorage.setItem('socratoys_userId', currentUserId);
+                    await loadProfiles();
+                    hideNewProfileModal();
+                } else {
+                    alert('Failed to create profile: ' + (data.error || 'Unknown error'));
+                }
+            } catch (e) {
+                alert('Failed to create profile.');
+                console.error(e);
+            }
+        }
+
+        // Load profiles on page load
+        loadProfiles();
 
         // ---- Main tab switching (Agent ↔ Admin Dashboard) ----
         let adminLoaded = false;
@@ -548,26 +791,28 @@
             }
         }
 
-        // Application State
-        const CONFIG = {
-            API_KEY: null, // Fetched from backend
-            URL: "wss://agent.deepgram.com/v1/agent/converse"
-        };
+        // ---- PLUGGABLE VOICE PROVIDER ---- //
+        let voiceProviderConfig = null; // Loaded from /api/config
+        let voiceProvider = null;       // Active adapter instance
 
         /**
-         * GET /api/config
-         * Fetches the Deepgram API key from the backend to avoid hardcoding.
+         * Load voice provider adapter based on backend configuration.
+         * Reads VOICE_PROVIDER from /api/config and dynamically imports the correct adapter.
          */
-        async function fetchConfig() {
+        async function loadVoiceProvider() {
             try {
                 const res = await fetch('/api/config');
-                const data = await res.json();
-                if (data.DEEPGRAM_API_KEY) {
-                    CONFIG.API_KEY = data.DEEPGRAM_API_KEY;
-                    console.log("Configuration loaded from backend");
-                }
+                voiceProviderConfig = await res.json();
+                const providerName = voiceProviderConfig.VOICE_PROVIDER || 'deepgram';
+
+                const module = providerName === 'gemini'
+                    ? await import('/voice-providers/gemini-adapter.js')
+                    : await import('/voice-providers/deepgram-adapter.js');
+
+                voiceProvider = new module.default(voiceProviderConfig);
+                console.log(`Voice provider loaded: ${providerName}`);
             } catch (e) {
-                console.error("Failed to load configuration from backend", e);
+                console.error('Failed to load voice provider:', e);
             }
         }
 
@@ -794,7 +1039,6 @@ The child said "${lastUserMsg ? lastUserMsg.content : 'tell me more'}" which mea
             return payload;
         }
 
-        let ws = null;
         let isConnected = false;
         let micStream = null;
         let audioContext = null;
@@ -853,9 +1097,9 @@ The child said "${lastUserMsg ? lastUserMsg.content : 'tell me more'}" which mea
 
         async function connect(profileId = 'router', historyMessages = [], isHotSwap = false) {
             try {
-                // Ensure config is loaded before connecting
-                if (!CONFIG.API_KEY) {
-                    await fetchConfig();
+                // Ensure voice provider adapter is loaded
+                if (!voiceProvider) {
+                    await loadVoiceProvider();
                 }
 
                 if (!isHotSwap) {
@@ -866,7 +1110,7 @@ The child said "${lastUserMsg ? lastUserMsg.content : 'tell me more'}" which mea
                     await fetchAgentPrompts();
 
                     // Fetch Long-Term Memory safely
-                    currentLongTermMemory = await fetchLongTermMemory('kid_1');
+                    currentLongTermMemory = await fetchLongTermMemory(currentUserId);
                     if (currentLongTermMemory) {
                         console.log("[Memory] Loaded cross-session facts: ", currentLongTermMemory);
                     }
@@ -882,261 +1126,215 @@ The child said "${lastUserMsg ? lastUserMsg.content : 'tell me more'}" which mea
                         }
                     });
 
-                    // Init AudioContext to play Deepgram's responses
+                    // Init AudioContext to play provider's audio responses
                     audioContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 24000 });
                 }
 
-                // 2. Open WebSocket
-                ws = new WebSocket(CONFIG.URL, ["token", CONFIG.API_KEY]);
-                ws.binaryType = 'arraybuffer';
+                // Build provider-agnostic agent config from AGENT_PROFILES
+                const agentSettings = getAgentSettings(profileId, historyMessages, currentLongTermMemory, isHotSwap);
+                const profile = AGENT_PROFILES[profileId];
+                const agentConfig = {
+                    agentId: profileId,
+                    prompt: agentSettings.agent.think.prompt,
+                    model: profile.model,
+                    functions: profile.functions,
+                    historyMessages: historyMessages,
+                    isHotSwap: isHotSwap
+                };
+
+                // Create a fresh adapter instance for each connection (hot-swap needs a new WebSocket)
+                if (isHotSwap) {
+                    const providerName = voiceProviderConfig.VOICE_PROVIDER || 'deepgram';
+                    const module = providerName === 'gemini'
+                        ? await import('/voice-providers/gemini-adapter.js')
+                        : await import('/voice-providers/deepgram-adapter.js');
+                    voiceProvider = new module.default(voiceProviderConfig);
+                }
 
                 if (!isHotSwap) {
                     btnText.textContent = "Connecting...";
                 }
 
-                ws.onopen = () => {
-                    console.log(`[WebSocket] Connected to agent profile: ${profileId}`);
-                    // Apply dynamic settings — pass isHotSwap so handoff context is injected into system prompt
-                    const settingsPayload = getAgentSettings(profileId, historyMessages, currentLongTermMemory, isHotSwap);
-                    ws.send(JSON.stringify(settingsPayload));
-                };
+                // ---- Wire up common event listeners ---- //
 
-                ws.onmessage = async (event) => {
-                    if (event.data instanceof ArrayBuffer) {
-                        // Binary Audio Playback
-                        playBinaryAudio(event.data);
-                        return;
+                voiceProvider.on('ready', (data) => {
+                    if (!isHotSwap) {
+                        // Now start streaming microphone
+                        startStreamingMic();
+                        // Update UI to Connected State
+                        isConnected = true;
+                        updateOrbState('listening');
+                        btnText.textContent = "Disconnect";
+                        toggleBtn.classList.add('btn-disconnect');
+                        micIcon.setAttribute("data-lucide", "square");
+                        lucide.createIcons();
                     }
 
-                    const message = JSON.parse(event.data);
-                    console.log(`[Deepgram]`, message);
+                    // Build greeting — context-aware on hot-swap, fixed on fresh connect
+                    let greetingMessage;
 
-                    switch (message.type) {
-                        case 'Welcome':
-                            // Settings were already sent in onopen, nothing to do here.
-                            break;
+                    if (isHotSwap && historyMessages && historyMessages.length > 0) {
+                        const lastAssistantMsg = [...historyMessages].reverse().find(m => m.role === 'assistant');
+                        const lastUserMsg = [...historyMessages].reverse().find(m => m.role === 'user');
 
-                        case 'SettingsApplied':
-                            if (!isHotSwap) {
-                                // Now start streaming microphone
-                                startStreamingMic();
-                                // Update UI to Connected State
-                                isConnected = true;
-                                updateOrbState('listening'); // Idle listening state
-                                btnText.textContent = "Disconnect";
-                                toggleBtn.classList.add('btn-disconnect');
-                                micIcon.setAttribute("data-lucide", "square");
-                                lucide.createIcons();
-                            }
+                        const topicContent = lastAssistantMsg ? lastAssistantMsg.content.trim() : '';
+                        const firstSentence = topicContent.split(/[.!?]/)[0];
+                        const shortTopic = firstSentence.length < 60 ? firstSentence : firstSentence.substring(0, 57) + '...';
 
-                            // Build greeting — context-aware on hot-swap, fixed on fresh connect
-                            let greetingMessage;
+                        const childSaid = lastUserMsg ? lastUserMsg.content.trim().toLowerCase() : '';
+                        const isGenericResponse = /^(yes|yeah|sure|okay|ok|tell me more|more|that's? interesting|cool|wow)/.test(childSaid);
 
-                            if (isHotSwap && historyMessages && historyMessages.length > 0) {
-                                // Find the last assistant message (contains the TOPIC being discussed)
-                                // AND the last user message (their response)
-                                const lastAssistantMsg = [...historyMessages].reverse().find(m => m.role === 'assistant');
-                                const lastUserMsg = [...historyMessages].reverse().find(m => m.role === 'user');
-
-                                // Extract the TOPIC from what the previous agent said (not the user's "tell me more")
-                                const topicContent = lastAssistantMsg ? lastAssistantMsg.content.trim() : '';
-                                // Shorten topic to first sentence or 60 chars for the greeting
-                                const firstSentence = topicContent.split(/[.!?]/)[0];
-                                const shortTopic = firstSentence.length < 60 ? firstSentence : firstSentence.substring(0, 57) + '...';
-
-                                // Check if user's response is generic ("yes", "tell me more", etc.)
-                                const childSaid = lastUserMsg ? lastUserMsg.content.trim().toLowerCase() : '';
-                                const isGenericResponse = /^(yes|yeah|sure|okay|ok|tell me more|more|that's? interesting|cool|wow)/.test(childSaid);
-
-                                // Agent-specific context-aware openers — pick up the thread naturally
-                                // Use the TOPIC from assistant message when user gave a generic response
-                                // All agents get personalized handoff greetings
-                                if (profileId === 'knowledge') {
-                                    // Knowledge Explorer
-                                    greetingMessage = shortTopic
-                                        ? `Ooh, I heard you were curious about "${shortTopic}"! That's awesome — let me tell you more about that!`
-                                        : `Hey there! I heard you want to learn about something cool. What topic are you curious about?`;
-                                } else if (profileId === 'brainstorm') {
-                                    // Brainstorming Coach
-                                    greetingMessage = shortTopic
-                                        ? `Hey, I heard you want to talk about something. I'm here to listen and help you think it through.`
-                                        : `Hey there! I'm here to help you think through things. Want to tell me what's on your mind?`;
-                                } else {
-                                    // Router (when returning from knowledge or brainstorm)
-                                    greetingMessage = shortTopic
-                                        ? `Welcome back! I heard you were just exploring "${shortTopic}" — want to learn more, or try something new?`
-                                        : `Welcome back! Want to learn about something cool, or talk about something on your mind?`;
-                                }
-                            } else {
-                                // Fresh connection — only use standard greetings for non-router agents
-                                if (profileId === 'knowledge') greetingMessage = "Hey there! I'm your learning buddy. What topic are you curious about today?";
-                                else if (profileId === 'brainstorm') greetingMessage = "Hey! I'm here to help you think things through. Want to tell me what's on your mind?";
-                            }
-
-                            // Trigger agent to speak with tiny delay so Deepgram backend has processed SettingsApplied
-                            setTimeout(() => {
-                                if (ws && ws.readyState === WebSocket.OPEN) {
-                                    if (isHotSwap) {
-                                        // HANDOFF: Don't inject a static greeting — let the LLM generate its response
-                                        // using the HANDOFF CONTEXT in the prompt. This way it will acknowledge
-                                        // the topic AND continue teaching in one natural response.
-                                        // Inject a hidden user message to trigger the LLM to respond.
-                                        ws.send(JSON.stringify({
-                                            type: "InjectUserMessage",
-                                            content: "[Continue the conversation from the handoff context]"
-                                        }));
-                                        console.log(`[Handoff] Triggered LLM to generate context-aware response for ${profileId}`);
-                                    } else if (profileId === 'router') {
-                                        // Fresh router connection: trigger generate_greeting function
-                                        ws.send(JSON.stringify({
-                                            type: "InjectUserMessage",
-                                            content: "Hello!"
-                                        }));
-                                    } else if (greetingMessage) {
-                                        // Fresh non-router connection: use fixed greeting
-                                        ws.send(JSON.stringify({
-                                            type: "InjectAgentMessage",
-                                            content: greetingMessage
-                                        }));
-                                    }
-                                }
-                            }, 250);
-                            break;
-
-                        case 'UserStartedSpeaking':
-                            // Barge-in: Stop agent playback instantly!
-                            updateOrbState('listening');
-                            playbackSession++; // Invalidate pending audio chunks
-
-                            // Stop all currently scheduled Web Audio nodes
-                            activeSources.forEach(source => {
-                                try { source.stop(); } catch (e) { }
-                            });
-                            activeSources = [];
-
-                            // Immediately reset the scheduling pointer to the current timeline
-                            if (audioContext) {
-                                nextPlayTime = audioContext.currentTime;
-                            }
-                            break;
-
-                        case 'AgentThinking':
-                            updateOrbState('thinking');
-                            break;
-
-                        case 'AgentStartedSpeaking':
-                            updateOrbState('speaking');
-                            break;
-
-                        case 'AgentAudioDone':
-                            // Return to listening state after speaking ends
-                            updateOrbState('listening');
-
-                            // If we have a pending hot-swap, execute it NOW that the AI finished its transition phrase
-                            if (window.pendingHandoff) {
-                                console.log("[Handoff] Transition phrase complete. Executing hot-swap.");
-                                const target = window.pendingHandoff;
-                                window.pendingHandoff = null;
-                                handleAgentHandoff(target);
-                            }
-                            break;
-
-                        case 'FunctionCallRequest': {
-                            const funcData = message.functions[0];
-                            console.log(`[Function Hit] ${funcData.name}`, funcData.arguments);
-
-                            if (funcData.name === 'generate_greeting') {
-                                // Client-side: hit our Express endpoint, return the fact to the router
-                                try {
-                                    let userId = 'kid_1';
-                                    try { userId = JSON.parse(funcData.arguments).user_id || 'kid_1'; } catch (_) { }
-
-                                    const greetRes = await fetch('/api/greeting', {
-                                        method: 'POST',
-                                        headers: { 'Content-Type': 'application/json' },
-                                        body: JSON.stringify({ userId })
-                                    });
-                                    const { greeting } = await greetRes.json();
-                                    ws.send(JSON.stringify({
-                                        type: 'FunctionCallResponse',
-                                        id: funcData.id,
-                                        name: funcData.name,
-                                        content: greeting
-                                    }));
-                                    console.log(`[Greeting] Delivered fact to router: "${greeting}"`);
-                                } catch (err) {
-                                    console.error('[Greeting] Failed, sending fallback.', err);
-                                    ws.send(JSON.stringify({
-                                        type: 'FunctionCallResponse',
-                                        id: funcData.id,
-                                        name: funcData.name,
-                                        content: "Did you know that a group of flamingos is called a flamboyance? Pretty fancy name for some pink birds!"
-                                    }));
-                                }
-                            } else {
-                                // Routing function: acknowledge, let agent say goodbye, then hot-swap
-                                ws.send(JSON.stringify({
-                                    type: 'FunctionCallResponse',
-                                    id: funcData.id,
-                                    name: funcData.name,
-                                    content: 'Transition acknowledged. Say a very short 1-sentence goodbye or handoff phrase and stop.'
-                                }));
-                                window.pendingHandoff = funcData.name;
-
-                                // Fallback if the agent stays silent
-                                setTimeout(() => {
-                                    if (window.pendingHandoff === funcData.name) {
-                                        console.log('[Handoff] Timeout fallback — forcing swap.');
-                                        window.pendingHandoff = null;
-                                        handleAgentHandoff(funcData.name);
-                                    }
-                                }, 4000);
-                            }
-                            break;
+                        if (profileId === 'knowledge') {
+                            greetingMessage = shortTopic
+                                ? `Ooh, I heard you were curious about "${shortTopic}"! That's awesome — let me tell you more about that!`
+                                : `Hey there! I heard you want to learn about something cool. What topic are you curious about?`;
+                        } else if (profileId === 'brainstorm') {
+                            greetingMessage = shortTopic
+                                ? `Hey, I heard you want to talk about something. I'm here to listen and help you think it through.`
+                                : `Hey there! I'm here to help you think through things. Want to tell me what's on your mind?`;
+                        } else {
+                            greetingMessage = shortTopic
+                                ? `Welcome back! I heard you were just exploring "${shortTopic}" — want to learn more, or try something new?`
+                                : `Welcome back! Want to learn about something cool, or talk about something on your mind?`;
                         }
-
-                        case 'ConversationText':
-                            addLogBubble(message.content, message.role);
-
-                            // Track conversation in-memory for seamless handoff (no DB race condition)
-                            conversationHistory.push({
-                                role: message.role,
-                                content: message.content
-                            });
-
-                            // Also save to Analytics Database (fire and forget)
-                            if (currentSessionId) {
-                                fetch('/api/logs', {
-                                    method: 'POST',
-                                    headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify({
-                                        sessionId: currentSessionId,
-                                        role: message.role,
-                                        content: message.content
-                                    })
-                                }).catch(err => console.error("Analytics save failed", err));
-                            }
-                            break;
-
-                        case 'Error':
-                            addLogBubble(`Error: ${message.description}`, 'agent');
-                            disconnect();
-                            break;
+                    } else {
+                        if (profileId === 'knowledge') greetingMessage = "Hey there! I'm your learning buddy. What topic are you curious about today?";
+                        else if (profileId === 'brainstorm') greetingMessage = "Hey! I'm here to help you think things through. Want to tell me what's on your mind?";
                     }
-                };
 
-                ws.onclose = () => {
-                    console.log("WebSocket Disconnected");
-                    disconnect();
-                };
+                    // Trigger agent to speak with tiny delay so backend has processed settings
+                    setTimeout(() => {
+                        if (voiceProvider && voiceProvider.isConnected()) {
+                            if (isHotSwap) {
+                                voiceProvider.injectUserMessage("[Continue the conversation from the handoff context]");
+                                console.log(`[Handoff] Triggered LLM to generate context-aware response for ${profileId}`);
+                            } else if (profileId === 'router') {
+                                voiceProvider.injectUserMessage("Hello!");
+                            } else if (greetingMessage) {
+                                voiceProvider.injectAgentMessage(greetingMessage);
+                            }
+                        }
+                    }, 250);
+                });
 
-                ws.onerror = (err) => {
-                    console.error("WebSocket Error:", err);
+                voiceProvider.on('user-speaking', () => {
+                    // Barge-in: Stop agent playback instantly!
+                    updateOrbState('listening');
+                    playbackSession++;
+
+                    activeSources.forEach(source => {
+                        try { source.stop(); } catch (e) { }
+                    });
+                    activeSources = [];
+
+                    if (audioContext) {
+                        nextPlayTime = audioContext.currentTime;
+                    }
+                });
+
+                voiceProvider.on('agent-thinking', () => {
+                    updateOrbState('thinking');
+                });
+
+                voiceProvider.on('agent-speaking', () => {
+                    updateOrbState('speaking');
+                });
+
+                voiceProvider.on('agent-audio-done', () => {
+                    updateOrbState('listening');
+
+                    // If we have a pending hot-swap, execute it NOW
+                    if (window.pendingHandoff) {
+                        console.log("[Handoff] Transition phrase complete. Executing hot-swap.");
+                        const target = window.pendingHandoff;
+                        window.pendingHandoff = null;
+                        handleAgentHandoff(target);
+                    }
+                });
+
+                voiceProvider.on('audio', (audioData) => {
+                    playBinaryAudio(audioData);
+                });
+
+                voiceProvider.on('function-call', async (funcData) => {
+                    console.log(`[Function Hit] ${funcData.name}`, funcData.arguments);
+
+                    if (funcData.name === 'generate_greeting') {
+                        try {
+                            let userId = currentUserId;
+                            try { userId = JSON.parse(funcData.arguments).user_id || currentUserId; } catch (_) { }
+
+                            const greetRes = await fetch('/api/greeting', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ userId })
+                            });
+                            const { greeting } = await greetRes.json();
+                            voiceProvider.sendFunctionResponse(funcData.id, funcData.name, greeting);
+                            console.log(`[Greeting] Delivered fact to router: "${greeting}"`);
+                        } catch (err) {
+                            console.error('[Greeting] Failed, sending fallback.', err);
+                            voiceProvider.sendFunctionResponse(
+                                funcData.id, funcData.name,
+                                "Did you know that a group of flamingos is called a flamboyance? Pretty fancy name for some pink birds!"
+                            );
+                        }
+                    } else {
+                        // Routing function: acknowledge, let agent say goodbye, then hot-swap
+                        voiceProvider.sendFunctionResponse(
+                            funcData.id, funcData.name,
+                            'Transition acknowledged. Say a very short 1-sentence goodbye or handoff phrase and stop.'
+                        );
+                        window.pendingHandoff = funcData.name;
+
+                        // Fallback if the agent stays silent
+                        setTimeout(() => {
+                            if (window.pendingHandoff === funcData.name) {
+                                console.log('[Handoff] Timeout fallback — forcing swap.');
+                                window.pendingHandoff = null;
+                                handleAgentHandoff(funcData.name);
+                            }
+                        }, 4000);
+                    }
+                });
+
+                voiceProvider.on('transcript', (data) => {
+                    addLogBubble(data.content, data.role);
+
+                    conversationHistory.push({
+                        role: data.role,
+                        content: data.content
+                    });
+
+                    // Save to Analytics Database (fire and forget)
+                    if (currentSessionId) {
+                        fetch('/api/logs', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                sessionId: currentSessionId,
+                                role: data.role,
+                                content: data.content
+                            })
+                        }).catch(err => console.error("Analytics save failed", err));
+                    }
+                });
+
+                voiceProvider.on('error', (data) => {
+                    addLogBubble(`Error: ${data.description}`, 'agent');
                     disconnect();
-                }
+                });
+
+                voiceProvider.on('disconnected', () => {
+                    console.log("Voice provider disconnected");
+                    disconnect();
+                });
+
+                // ---- Connect to the provider ---- //
+                await voiceProvider.connect(agentConfig);
 
             } catch (err) {
-                console.error("Microphone Access Denied:", err);
+                console.error("Connection failed:", err);
                 alert("Please allow microphone access to use the Agent.");
             }
         }
@@ -1159,13 +1357,9 @@ The child said "${lastUserMsg ? lastUserMsg.content : 'tell me more'}" which mea
             toggleBtn.classList.remove('btn-disconnect');
             lucide.createIcons();
 
-            if (ws) {
-                // Ensure WebSocket actually closes
-                if (ws.readyState === WebSocket.OPEN) {
-                    // Send an End message to Deepgram if supported, or just close
-                    ws.close();
-                }
-                ws = null;
+            // Disconnect voice provider
+            if (voiceProvider) {
+                voiceProvider.disconnect();
             }
 
             // Stop Microphone Tracks completely
@@ -1197,7 +1391,7 @@ The child said "${lastUserMsg ? lastUserMsg.content : 'tell me more'}" which mea
             nextPlayTime = 0;
             conversationHistory = []; // Clear in-memory history for next session
 
-            console.log("Fully disconnected hardware and websockets.");
+            console.log("Fully disconnected hardware and voice provider.");
         }
 
         // ---- Multi-Agent Handoff Integration ---- //
@@ -1288,26 +1482,18 @@ The child said "${lastUserMsg ? lastUserMsg.content : 'tell me more'}" which mea
                 ];
             }
 
-            // 2. Shut down the CURRENT WebSocket *ONLY*
+            // 2. Shut down the CURRENT voice provider connection *ONLY*
             // Do NOT touch `micStream` or `audioContext`. Keep the plumbing alive!
-            if (ws && ws.readyState === WebSocket.OPEN) {
+            if (voiceProvider) {
                 console.log(`[Handoff] Closing previous agent connection to prevent overlap...`);
-                // Unbind handlers to prevent triggering a global disconnect that destroys micStream
-                ws.onclose = null;
-                ws.onerror = null;
-                ws.onmessage = null;
-                ws.close();
+                voiceProvider.disconnect();
             }
-            const oldWs = ws;
-            ws = null;
 
             // Wait a tiny fraction of a second to ensure smooth socket drop 
             await new Promise(r => setTimeout(r, 50));
-            if (oldWs) {
-                console.log(`[Handoff] Previous agent connection successfully terminated: ${oldWs.readyState === WebSocket.CLOSED}`);
-            }
+            console.log(`[Handoff] Previous agent connection terminated.`);
 
-            // 3. Spaw a NEW WebSocket with the NEW Profile IMMEDIATELY.
+            // 3. Spawn a NEW connection with the NEW Profile IMMEDIATELY.
             console.log(`[Handoff] Booting new agent stream: Profile '${targetProfile}'`);
             await connect(targetProfile, historyToPass, true); // isHotSwap = true -> Keeps Mic stream active!
         }
@@ -1315,7 +1501,7 @@ The child said "${lastUserMsg ? lastUserMsg.content : 'tell me more'}" which mea
         // ---- Audio Streaming Utilities ---- //
 
         function startStreamingMic() {
-            // Read raw PCM data from Microphone and send to Deepgram WebSockets
+            // Read raw PCM data from Microphone and send to voice provider
             const audioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
             window.micSource = audioCtx.createMediaStreamSource(micStream);
 
@@ -1326,7 +1512,7 @@ The child said "${lastUserMsg ? lastUserMsg.content : 'tell me more'}" which mea
             window.micProcessor.connect(audioCtx.destination);
 
             window.micProcessor.onaudioprocess = (e) => {
-                if (!ws || ws.readyState !== WebSocket.OPEN) return;
+                if (!voiceProvider || !voiceProvider.isConnected()) return;
 
                 const inputData = e.inputBuffer.getChannelData(0);
 
@@ -1338,7 +1524,7 @@ The child said "${lastUserMsg ? lastUserMsg.content : 'tell me more'}" which mea
                     pcm16[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
                 }
 
-                ws.send(pcm16.buffer);
+                voiceProvider.sendAudio(pcm16.buffer);
             };
         }
 

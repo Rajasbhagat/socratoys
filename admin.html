@@ -200,6 +200,59 @@
             font-size: 15px;
             gap: 14px;
         }
+
+        /* Profile switcher in header */
+        .admin-profile-select {
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            color: #e8e5e2;
+            font-size: 12px;
+            font-weight: 500;
+            border-radius: 7px;
+            padding: 5px 28px 5px 10px;
+            cursor: pointer;
+            outline: none;
+            appearance: none;
+            -webkit-appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%23a8a29e' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 8px center;
+            transition: border-color 0.15s ease;
+        }
+
+        .admin-profile-select:focus {
+            border-color: rgba(217, 70, 239, 0.5);
+        }
+
+        /* Recommendation cards */
+        .rec-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.07);
+            border-radius: 12px;
+            padding: 18px 20px;
+            transition: background 0.15s ease;
+        }
+
+        .rec-card:hover {
+            background: rgba(255, 255, 255, 0.06);
+        }
+
+        .rec-type-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 3px 9px;
+            border-radius: 6px;
+            font-size: 10px;
+            font-family: 'Fira Code', monospace;
+            font-weight: 700;
+            letter-spacing: 0.4px;
+            text-transform: uppercase;
+        }
+
+        .rec-type-course { background: rgba(129,140,248,0.12); color: #818cf8; border: 1px solid rgba(129,140,248,0.2); }
+        .rec-type-video { background: rgba(239,68,68,0.12); color: #f87171; border: 1px solid rgba(239,68,68,0.2); }
+        .rec-type-book { background: rgba(34,197,94,0.12); color: #4ade80; border: 1px solid rgba(34,197,94,0.2); }
+        .rec-type-activity { background: rgba(251,146,60,0.12); color: #fb923c; border: 1px solid rgba(251,146,60,0.2); }
     </style>
 </head>
 
@@ -207,6 +260,17 @@
     <!-- Sub Navigation (Analytics / Prompt Tuning / Child Profile) -->
     <header
         style="height:44px; background:#111110; border-bottom:1px solid rgba(255,255,255,0.06); display:flex; align-items:center; padding:0 20px; gap:4px; flex-shrink:0; z-index:50;">
+
+        <!-- Profile Switcher -->
+        <div style="display:flex; align-items:center; gap:6px; margin-right:12px;">
+            <i data-lucide="user-round" style="width:14px; height:14px; color:#d946ef;"></i>
+            <select id="admin-profile-select" class="admin-profile-select" onchange="onAdminProfileChanged()">
+                <option value="kid_1">Loading...</option>
+            </select>
+        </div>
+
+        <div style="width:1px; height:20px; background:rgba(255,255,255,0.08); margin-right:4px;"></div>
+
         <button
             style="display:flex; align-items:center; gap:7px; padding:5px 14px; border-radius:7px; font-size:13px; font-weight:500; border:none; cursor:pointer; transition:all 0.15s ease; background:rgba(255,255,255,0.1); color:#fafaf9;"
             id="tab-analytics" onclick="switchTab('analytics')">
@@ -226,6 +290,11 @@
             style="display:flex; align-items:center; gap:7px; padding:5px 14px; border-radius:7px; font-size:13px; font-weight:500; border:none; cursor:pointer; transition:all 0.15s ease; background:transparent; color:#a8a29e;"
             id="tab-insights" onclick="switchTab('insights')">
             <i data-lucide="lightbulb" style="width:13px; height:13px;"></i> Learning Insights
+        </button>
+        <button
+            style="display:flex; align-items:center; gap:7px; padding:5px 14px; border-radius:7px; font-size:13px; font-weight:500; border:none; cursor:pointer; transition:all 0.15s ease; background:transparent; color:#a8a29e;"
+            id="tab-recommendations" onclick="switchTab('recommendations')">
+            <i data-lucide="sparkles" style="width:13px; height:13px;"></i> Recommendations
         </button>
     </header>
 
@@ -361,7 +430,7 @@
                         </h2>
                         <p
                             style="font-size:12px; color:rgba(255,255,255,0.35); font-family:'Fira Code',monospace; margin-top:6px;">
-                            Auto-generated from conversation history · User ID: kid_1</p>
+                            Auto-generated from conversation history · User ID: <span id="profile-user-id-label">—</span></p>
                     </div>
                     <div style="display:flex; gap:10px;">
                         <button id="btn-gen-persona" onclick="generatePersona()"
@@ -427,6 +496,36 @@
                             style="color:rgba(255,255,255,0.25); font-family:'Fira Code',monospace; font-size:13px; text-align:center; padding:20px;">
                             Loading facts...</div>
                     </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- View 5: Recommendations -->
+        <div id="view-recommendations" style="background:#0c0a09;"
+            class="w-full h-full absolute inset-0 opacity-0 pointer-events-none z-0 transition-opacity overflow-y-auto">
+            <div style="max-width:960px; margin:0 auto; padding:32px 24px;">
+
+                <!-- Header -->
+                <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:28px;">
+                    <div>
+                        <h2 style="font-size:20px; font-weight:700; color:#fafaf9; display:flex; align-items:center; gap:10px;">
+                            <i data-lucide="sparkles" style="width:22px;height:22px;color:#e879f9;"></i> Content Recommendations
+                        </h2>
+                        <p style="font-size:12px; color:rgba(255,255,255,0.35); font-family:'Fira Code',monospace; margin-top:6px;">
+                            AI-generated courses, videos, books, and activities tailored to your child's interests</p>
+                    </div>
+                    <button id="btn-gen-recs" onclick="generateRecommendations()"
+                        style="padding:9px 18px; background:linear-gradient(135deg,#d946ef,#818cf8); color:white; font-size:13px; font-weight:600; border-radius:9px; border:none; cursor:pointer; display:flex; align-items:center; gap:8px; box-shadow:0 0 16px rgba(217,70,239,0.25); transition:opacity 0.15s;"
+                        onmouseover="this.style.opacity='0.88'" onmouseout="this.style.opacity='1'">
+                        <i data-lucide="wand-2" style="width:14px;height:14px;"></i> Generate Recommendations
+                    </button>
+                </div>
+
+                <!-- Recommendation Cards -->
+                <div id="rec-cards-container" style="display:flex; flex-direction:column; gap:12px;">
+                    <div style="color:rgba(255,255,255,0.25); font-family:'Fira Code',monospace; font-size:13px; text-align:center; padding:40px;">
+                        Click "Generate Recommendations" to get personalized suggestions based on conversation history.</div>
                 </div>
 
             </div>
@@ -761,7 +860,7 @@
 
 
         // --- View Switching ---
-        const ALL_VIEWS = ['analytics', 'prompts', 'profile', 'insights'];
+        const ALL_VIEWS = ['analytics', 'prompts', 'profile', 'insights', 'recommendations'];
         function switchTab(viewName) {
             ALL_VIEWS.forEach(v => {
                 const tab = document.getElementById('tab-' + v);
@@ -776,6 +875,7 @@
             if (viewName === 'prompts') loadPromptEngine();
             if (viewName === 'profile') loadChildProfile();
             if (viewName === 'insights') loadLearningInsights();
+            if (viewName === 'recommendations') loadRecommendations();
         }
 
         // --- Prompt Engine Logic ---
@@ -873,7 +973,7 @@
         // --- Child Profile Logic ---
         async function loadChildProfile() {
             try {
-                const res = await fetch('/api/memory-all/kid_1');
+                const res = await fetch('/api/memory-all/' + adminUserId);
                 const data = await res.json();
                 const memories = data.memories || [];
                 const list = document.getElementById('facts-list');
@@ -909,7 +1009,7 @@
             lucide.createIcons();
 
             try {
-                const res = await fetch('/api/profile/kid_1', { method: 'POST' });
+                const res = await fetch('/api/profile/' + adminUserId, { method: 'POST' });
                 const data = await res.json();
                 if (!data.success) throw new Error(data.error);
                 const p = data.profile;
@@ -958,7 +1058,7 @@
             btn.disabled = true;
             lucide.createIcons();
             try {
-                const res = await fetch('/api/profile/kid_1/deduplicate', { method: 'POST' });
+                const res = await fetch('/api/profile/' + adminUserId + '/deduplicate', { method: 'POST' });
                 const data = await res.json();
                 if (!data.success) throw new Error(data.error);
                 if (data.removed > 0) {
@@ -984,7 +1084,7 @@
 
         // --- Learning Insights Logic ---
         async function loadLearningInsights() {
-            const userId = 'kid_1';
+            const userId = adminUserId;
             loadEngagementInsights(userId);
             loadInterestInsights(userId);
             loadExplorationInsights(userId);
@@ -1215,7 +1315,150 @@
             }
         }
 
+        // --- Admin Profile Management ---
+        let adminUserId = 'kid_1';
+
+        async function loadAdminProfiles() {
+            try {
+                const res = await fetch('/api/profiles');
+                const data = await res.json();
+                if (data.success && data.profiles) {
+                    const select = document.getElementById('admin-profile-select');
+                    select.innerHTML = '';
+                    data.profiles.forEach(p => {
+                        const opt = document.createElement('option');
+                        opt.value = p.user_id;
+                        opt.textContent = p.display_name + (p.age ? ` (${p.age})` : '');
+                        select.appendChild(opt);
+                    });
+                    if (data.profiles.find(p => p.user_id === adminUserId)) {
+                        select.value = adminUserId;
+                    } else if (data.profiles.length > 0) {
+                        adminUserId = data.profiles[0].user_id;
+                        select.value = adminUserId;
+                    }
+                    // Update profile tab header
+                    const selectedProfile = data.profiles.find(p => p.user_id === adminUserId);
+                    if (selectedProfile) updateProfileHeader(selectedProfile);
+                }
+            } catch (e) {
+                console.error('Failed to load admin profiles', e);
+            }
+        }
+
+        function onAdminProfileChanged() {
+            adminUserId = document.getElementById('admin-profile-select').value;
+            // Update profile header label
+            document.getElementById('profile-user-id-label').textContent = adminUserId;
+            // Reload current view data for the new profile
+            const activeView = ALL_VIEWS.find(v => {
+                const el = document.getElementById('view-' + v);
+                return el && !el.classList.contains('opacity-0');
+            });
+            if (activeView === 'profile') loadChildProfile();
+            if (activeView === 'insights') loadLearningInsights();
+            if (activeView === 'recommendations') loadRecommendations();
+        }
+
+        function updateProfileHeader(profile) {
+            const header = document.querySelector('#view-profile h2');
+            if (header) header.innerHTML = `<i data-lucide="user-round" style="width:22px;height:22px;color:#d946ef;"></i> ${profile.display_name} — Learning Profile`;
+            document.getElementById('profile-user-id-label').textContent = profile.user_id;
+            lucide.createIcons();
+        }
+
+        // --- Recommendations Logic ---
+        async function loadRecommendations() {
+            const container = document.getElementById('rec-cards-container');
+            try {
+                const res = await fetch('/api/recommendations/' + adminUserId);
+                const data = await res.json();
+                if (!data.success || !data.recommendations || data.recommendations.length === 0) {
+                    container.innerHTML = `<div style="color:rgba(255,255,255,0.25); font-family:'Fira Code',monospace; font-size:13px; text-align:center; padding:40px;">
+                        No recommendations yet. Click "Generate Recommendations" to get personalized suggestions.</div>`;
+                    return;
+                }
+                renderRecommendations(data.recommendations);
+            } catch (e) {
+                console.error('Failed to load recommendations', e);
+                container.innerHTML = '<div style="color:#f87171; text-align:center; padding:20px;">Failed to load recommendations.</div>';
+            }
+        }
+
+        async function generateRecommendations() {
+            const btn = document.getElementById('btn-gen-recs');
+            btn.innerHTML = '<i data-lucide="loader-2" style="width:14px;height:14px;" class="animate-spin"></i> Generating...';
+            btn.disabled = true;
+            btn.style.opacity = '0.7';
+            lucide.createIcons();
+
+            try {
+                const res = await fetch('/api/recommendations/' + adminUserId + '/generate', { method: 'POST' });
+                const data = await res.json();
+                if (data.success && data.recommendations && data.recommendations.length > 0) {
+                    renderRecommendations(data.recommendations);
+                } else if (data.message) {
+                    document.getElementById('rec-cards-container').innerHTML = `<div style="color:rgba(255,255,255,0.4); text-align:center; padding:40px; font-family:'Fira Code',monospace; font-size:13px;">${data.message}</div>`;
+                } else {
+                    alert('Failed to generate: ' + (data.error || 'Unknown error'));
+                }
+            } catch (e) {
+                console.error(e);
+                alert('Failed to generate recommendations.');
+            } finally {
+                btn.innerHTML = '<i data-lucide="wand-2" style="width:14px;height:14px;"></i> Regenerate';
+                btn.disabled = false;
+                btn.style.opacity = '1';
+                lucide.createIcons();
+            }
+        }
+
+        function renderRecommendations(recs) {
+            const container = document.getElementById('rec-cards-container');
+            const typeIcons = { course: 'graduation-cap', video: 'play-circle', book: 'book-open', activity: 'palette' };
+            const typeLabels = { course: 'Course', video: 'Video', book: 'Book', activity: 'Activity' };
+
+            let html = '';
+            recs.forEach(rec => {
+                const icon = typeIcons[rec.type] || 'star';
+                const typeClass = 'rec-type-' + (rec.type || 'course');
+                html += `<div class="rec-card">
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px;">
+                        <div style="display:flex; align-items:center; gap:10px;">
+                            <i data-lucide="${icon}" style="width:18px;height:18px;color:#e879f9;flex-shrink:0;"></i>
+                            <span style="font-size:15px; font-weight:600; color:#fafaf9;">${rec.title}</span>
+                        </div>
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <span class="rec-type-badge ${typeClass}">${typeLabels[rec.type] || rec.type}</span>
+                            ${rec.id ? `<button onclick="dismissRec(${rec.id}, this)" style="background:none; border:none; color:rgba(255,255,255,0.25); cursor:pointer; font-size:16px; padding:2px 6px;" title="Dismiss">&times;</button>` : ''}
+                        </div>
+                    </div>
+                    <p style="font-size:13px; color:#c8c4c0; line-height:1.65; margin-bottom:10px;">${rec.description || ''}</p>
+                    <div style="display:flex; align-items:center; gap:14px; font-size:11px; font-family:'Fira Code',monospace; color:rgba(255,255,255,0.35); padding-top:10px; border-top:1px solid rgba(255,255,255,0.06);">
+                        <span style="display:flex; align-items:center; gap:4px;"><i data-lucide="target" style="width:11px;height:11px;"></i>${rec.reason || ''}</span>
+                        ${rec.topic_match ? `<span style="display:flex; align-items:center; gap:4px;"><i data-lucide="tag" style="width:11px;height:11px;"></i>${rec.topic_match}</span>` : ''}
+                    </div>
+                </div>`;
+            });
+            container.innerHTML = html;
+            lucide.createIcons();
+        }
+
+        async function dismissRec(id, btn) {
+            try {
+                await fetch('/api/recommendations/' + id + '/dismiss', { method: 'POST' });
+                const card = btn.closest('.rec-card');
+                if (card) {
+                    card.style.opacity = '0';
+                    card.style.transform = 'translateX(20px)';
+                    card.style.transition = 'all 0.3s ease';
+                    setTimeout(() => card.remove(), 300);
+                }
+            } catch (e) { console.error(e); }
+        }
+
         // Init
+        loadAdminProfiles();
         loadSessions();
     </script>
 

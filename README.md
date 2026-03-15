@@ -83,6 +83,26 @@ For a detailed technical breakdown, please refer to our **[ARCHITECTURE.md](./AR
    - Main App: `http://localhost:3000/index.html`
    - Admin Tab: `http://localhost:3000/admin.html`
 
+### Automated GCP Deployment
+
+This project includes a deployment automation script for Google Cloud Run:
+
+```bash
+npm run deploy:gcp
+```
+
+The script lives at `scripts/deploy-cloud-run.sh` and automates:
+- loading secrets from `.env`
+- resolving the active GCP project or `PROJECT_ID`
+- deploying the app source to Cloud Run
+- injecting required runtime environment variables
+
+Optional overrides:
+
+```bash
+PROJECT_ID=socratoys REGION=europe-west1 SERVICE_NAME=socratoys npm run deploy:gcp
+```
+
 ---
 
 ## 🔒 Security & Privacy
