@@ -129,5 +129,6 @@ dist
 .yarn/install-state.gz
 .pnp.*
 analytics.db
+socratoys.db
 server.log
 test_admin_ui.js
