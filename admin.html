@@ -328,6 +328,43 @@
             margin-top: 4px;
         }
         .kid-card-open-btn:hover { opacity: 0.85; }
+
+        /* Responsive Design - Mobile & Tablet */
+        @media (max-width: 768px) {
+            #admin-header {
+                flex-wrap: wrap;
+                height: auto !important;
+                min-height: 44px;
+                padding-top: 8px !important;
+                padding-bottom: 8px !important;
+            }
+            #kids-grid {
+                grid-template-columns: 1fr !important;
+            }
+            #view-analytics, #view-prompts, #view-profile, #view-recommendations {
+                flex-direction: column !important;
+            }
+            .sidebar {
+                width: 100% !important;
+                max-height: 250px;
+                border-right: none !important;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+            }
+            .main-content {
+                flex: none !important; /* Let it shrink/grow as needed */
+                height: calc(100% - 250px);
+            }
+            .chat-bubble {
+                max-width: 90% !important;
+            }
+            .topic-category {
+                width: 100% !important;
+            }
+            .modal-card {
+                width: 90% !important;
+                margin: 0 16px;
+            }
+        }
     </style>
 </head>
 
