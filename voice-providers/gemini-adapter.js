@@ -25,10 +25,11 @@ const VOICE_NAMES = {
     brainstorm: 'Charon'     // Calm, thoughtful
 };
 
-// Map OpenAI model names to Gemini equivalents
+// Map OpenAI model names to Gemini Live equivalents
+// gemini-2.5-flash-native-audio-latest is the current live/realtime model for this API key
 const MODEL_MAP = {
-    'gpt-4o-mini': 'gemini-2.0-flash-live-001',
-    'gpt-4o': 'gemini-2.0-flash-live-001'
+    'gpt-4o-mini': 'gemini-2.5-flash-native-audio-latest',
+    'gpt-4o': 'gemini-2.5-flash-native-audio-latest'
 };
 
 export default class GeminiAdapter extends VoiceProvider {
@@ -37,16 +38,26 @@ export default class GeminiAdapter extends VoiceProvider {
         this.ws = null;
         this._currentAgentConfig = null;
         this._isSetupComplete = false;
+        this._outputTranscriptBuffer = '';
+        this._inputTranscriptBuffer = '';
+        this._inputTranscriptTimer = null;
     }
 
     /**
      * Build the Gemini Live API WebSocket URL.
+     *
+     * API keys (both AIzaSy... and AQ... formats) connect directly to generativelanguage.googleapis.com.
+     * True Vertex AI OAuth tokens (ya29...) must be proxied via /api/gemini-live-proxy since
+     * browsers can't set Authorization headers on WebSocket connections.
      */
     _getWebSocketUrl() {
         const apiKey = this.config.GEMINI_API_KEY;
-        const model = this._currentAgentConfig
-            ? (MODEL_MAP[this._currentAgentConfig.model] || 'gemini-2.0-flash-live-001')
-            : 'gemini-2.0-flash-live-001';
+        // OAuth access tokens (Vertex AI service account tokens) start with 'ya29.' and need proxying.
+        // API keys (AIzaSy... or AQ... GCP-linked keys) can connect directly.
+        if (apiKey && apiKey.startsWith('ya29.')) {
+            const wsProto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+            return `${wsProto}//${location.host}/api/gemini-live-proxy`;
+        }
         return `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=${apiKey}`;
     }
 
@@ -54,7 +65,7 @@ export default class GeminiAdapter extends VoiceProvider {
      * Build the Gemini setup message from agent config.
      */
     _buildSetupMessage(agentConfig) {
-        const model = MODEL_MAP[agentConfig.model] || 'gemini-2.0-flash-live-001';
+        const model = MODEL_MAP[agentConfig.model] || 'gemini-2.5-flash-native-audio-latest';
         const voiceName = VOICE_NAMES[agentConfig.agentId] || 'Aoede';
 
         // Convert Deepgram-style function definitions to Gemini tool format
@@ -79,8 +90,15 @@ export default class GeminiAdapter extends VoiceProvider {
                                 voiceName: voiceName
                             }
                         }
+                    },
+                    // Disable thinking tokens — prevents internal reasoning from leaking into transcription
+                    thinkingConfig: {
+                        thinkingBudget: 0
                     }
                 },
+                // Transcription fields must be at setup top level, NOT inside generationConfig
+                inputAudioTranscription: {},
+                outputAudioTranscription: {},
                 systemInstruction: {
                     parts: [{ text: agentConfig.prompt }]
                 }
@@ -110,20 +128,45 @@ export default class GeminiAdapter extends VoiceProvider {
             this.ws = new WebSocket(url);
             this.ws.binaryType = 'arraybuffer';
 
+            // Timeout: if setupComplete not received within 10s, reject with a useful error
+            let setupTimeout = setTimeout(() => {
+                if (!this._isSetupComplete) {
+                    console.error('[Gemini] Setup timeout — no setupComplete received within 10s. WS readyState:', this.ws ? this.ws.readyState : 'null');
+                    reject(new Error('Setup timeout: Gemini did not respond within 10 seconds. Check API key and network.'));
+                    if (this.ws) this.ws.close();
+                }
+            }, 10000);
+
             this.ws.onopen = () => {
                 console.log(`[Gemini] WebSocket connected for agent: ${agentConfig.agentId}`);
 
                 // Send setup message
                 const setupMsg = this._buildSetupMessage(agentConfig);
-                console.log('[Gemini] Sending setup:', JSON.stringify(setupMsg).substring(0, 200) + '...');
                 this.ws.send(JSON.stringify(setupMsg));
             };
 
             this.ws.onmessage = (event) => {
-                // Binary audio data from Gemini
+                // Gemini sends control messages (setupComplete, serverContent, etc.) as binary frames.
+                // Try to decode ArrayBuffers as UTF-8 JSON first; only treat as raw audio if that fails.
                 if (event.data instanceof ArrayBuffer) {
-                    this.emit('audio', event.data);
-                    return;
+                    let text;
+                    try {
+                        text = new TextDecoder().decode(event.data);
+                    } catch (_) {}
+                    if (text) {
+                        try {
+                            const parsed = JSON.parse(text);
+                            // It's a JSON control message in a binary frame — fall through to normal handling
+                            event = { data: text };
+                        } catch (_) {
+                            // Not JSON — it's real binary audio
+                            this.emit('audio', event.data);
+                            return;
+                        }
+                    } else {
+                        this.emit('audio', event.data);
+                        return;
+                    }
                 }
 
                 let message;
@@ -134,12 +177,31 @@ export default class GeminiAdapter extends VoiceProvider {
                     return;
                 }
 
-                console.log('[Gemini]', Object.keys(message));
+                console.log('[Gemini] message keys:', Object.keys(message));
 
                 // Setup complete — ready to stream
                 if (message.setupComplete) {
+                    clearTimeout(setupTimeout);
                     this._isSetupComplete = true;
                     console.log('[Gemini] Setup complete, ready for audio');
+
+                    // Inject conversation history as context turns before signaling ready.
+                    // Gemini Live doesn't accept history in setup; inject via clientContent instead.
+                    if (agentConfig.historyMessages && agentConfig.historyMessages.length > 0) {
+                        const turns = agentConfig.historyMessages
+                            .filter(m => m.role === 'user' || m.role === 'assistant')
+                            .map(m => ({
+                                role: m.role === 'assistant' ? 'model' : 'user',
+                                parts: [{ text: m.content }]
+                            }));
+                        if (turns.length > 0) {
+                            console.log(`[Gemini] Injecting ${turns.length} history turns as context`);
+                            this.ws.send(JSON.stringify({
+                                clientContent: { turns, turnComplete: false }
+                            }));
+                        }
+                    }
+
                     this.emit('ready', { agentId: agentConfig.agentId, isHotSwap: agentConfig.isHotSwap });
                     resolve();
                     return;
@@ -159,45 +221,63 @@ export default class GeminiAdapter extends VoiceProvider {
                         for (const part of sc.modelTurn.parts) {
                             // Audio response
                             if (part.inlineData && part.inlineData.mimeType && part.inlineData.mimeType.startsWith('audio/')) {
-                                // Decode base64 audio to ArrayBuffer
                                 const audioBytes = this._base64ToArrayBuffer(part.inlineData.data);
                                 this.emit('agent-speaking');
                                 this.emit('audio', audioBytes);
                             }
-
-                            // Text response (transcript)
+                            // Text parts (non-audio mode fallback) — accumulate into buffer
                             if (part.text) {
-                                this.emit('transcript', {
-                                    role: 'assistant',
-                                    content: part.text
-                                });
+                                this._outputTranscriptBuffer += part.text;
                             }
                         }
                     }
 
-                    // Turn complete
+                    // Output transcription chunks — accumulate, emit complete on turnComplete
+                    if (sc.outputTranscription && sc.outputTranscription.text) {
+                        this._outputTranscriptBuffer += sc.outputTranscription.text;
+                    }
+
+                    // Input transcription — Gemini sends incremental chunks (new words only per event).
+                    // APPEND each chunk to build the full utterance.
+                    // Flush when agent starts generating (definitive end-of-user-turn signal).
+                    if (sc.inputTranscription && sc.inputTranscription.text) {
+                        // Concatenate directly — Gemini sends sub-word chunks so don't add spaces.
+                        // Chunks include their own spacing at word boundaries.
+                        // Normalize multiple spaces on emit.
+                        this._inputTranscriptBuffer += sc.inputTranscription.text;
+                        clearTimeout(this._inputTranscriptTimer);
+                        this._inputTranscriptTimer = setTimeout(() => {
+                            if (this._inputTranscriptBuffer) {
+                                this.emit('transcript', { role: 'user', content: this._inputTranscriptBuffer.trim().replace(/\s+/g, ' ') });
+                                this._inputTranscriptBuffer = '';
+                            }
+                        }, 2000);
+                    }
+
+                    // Agent starts generating — flush pending user transcript immediately
+                    if ((sc.modelTurn || sc.outputTranscription) && this._inputTranscriptBuffer) {
+                        clearTimeout(this._inputTranscriptTimer);
+                        this.emit('transcript', { role: 'user', content: this._inputTranscriptBuffer.trim().replace(/\s+/g, ' ') });
+                        this._inputTranscriptBuffer = '';
+                    }
+
+                    // Turn complete — emit the full buffered agent transcript, then signal done
                     if (sc.turnComplete) {
+                        if (this._outputTranscriptBuffer.trim()) {
+                            this.emit('transcript', {
+                                role: 'assistant',
+                                content: this._outputTranscriptBuffer.trim()
+                            });
+                        }
+                        this._outputTranscriptBuffer = '';
                         this.emit('agent-audio-done');
                     }
 
-                    // Input transcription (what the user said)
-                    if (sc.inputTranscription) {
-                        this.emit('transcript', {
-                            role: 'user',
-                            content: sc.inputTranscription.text
-                        });
-                    }
-
-                    // Output transcription (what the agent said, as text)
-                    if (sc.outputTranscription) {
-                        this.emit('transcript', {
-                            role: 'assistant',
-                            content: sc.outputTranscription.text
-                        });
-                    }
-
-                    // Interrupted by user (barge-in)
+                    // Interrupted by user (barge-in) — discard incomplete agent transcript
                     if (sc.interrupted) {
+                        this._outputTranscriptBuffer = '';
+                        clearTimeout(this._inputTranscriptTimer);
+                        this._inputTranscriptBuffer = '';
                         this.emit('user-speaking');
                     }
                 }
@@ -223,8 +303,12 @@ export default class GeminiAdapter extends VoiceProvider {
                 }
             };
 
-            this.ws.onclose = () => {
-                console.log('[Gemini] WebSocket disconnected');
+            this.ws.onclose = (event) => {
+                console.log(`[Gemini] WebSocket disconnected — code: ${event.code}, reason: "${event.reason}", wasClean: ${event.wasClean}`);
+                if (!this._isSetupComplete) {
+                    const msg = `Connection closed before setup (code ${event.code}: ${event.reason || 'no reason'})`;
+                    reject(new Error(msg));
+                }
                 this.emit('disconnected');
             };
 
@@ -247,6 +331,10 @@ export default class GeminiAdapter extends VoiceProvider {
             this.ws = null;
         }
         this._isSetupComplete = false;
+        this._outputTranscriptBuffer = '';
+        clearTimeout(this._inputTranscriptTimer);
+        this._inputTranscriptBuffer = '';
+        this._inputTranscriptTimer = null;
     }
 
     /**

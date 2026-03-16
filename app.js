@@ -3,6 +3,8 @@ import express from 'express';
 import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import http from 'http';
+import { WebSocketServer, WebSocket as WS } from 'ws';
 import * as db from './db.js';
 import { GoogleGenAI } from '@google/genai';
 
@@ -48,12 +50,15 @@ app.use(express.static(path.join(__dirname)));
  * Returns public configuration and keys for the frontend.
  * This ensures API keys are not hardcoded in the HTML.
  */
+const SERVER_START_TIME = Date.now();
+
 app.get('/api/config', (req, res) => {
     const provider = process.env.VOICE_PROVIDER || 'deepgram';
     res.json({
         VOICE_PROVIDER: provider,
         DEEPGRAM_API_KEY: provider === 'deepgram' ? process.env.DEEPGRAM_API_KEY : undefined,
         GEMINI_API_KEY: provider === 'gemini' ? process.env.GEMINI_API_KEY : undefined,
+        _v: SERVER_START_TIME, // cache-buster for adapter JS modules
     });
 });
 
@@ -1202,7 +1207,76 @@ SUMMARY:`,
     }
 });
 
-// Start Express Server
-app.listen(PORT, () => {
+// =============================================================================
+// VERTEX AI GEMINI LIVE WEBSOCKET PROXY
+// =============================================================================
+// Browsers can't set Authorization headers on WebSocket connections, so Vertex AI
+// tokens must be injected server-side. This proxy forwards messages transparently
+// between the browser and Vertex AI's BidiGenerateContent endpoint.
+
+const VERTEX_PROJECT = process.env.VERTEX_PROJECT;
+const VERTEX_LOCATION = process.env.VERTEX_LOCATION || 'us-central1';
+
+const server = http.createServer(app);
+
+const wss = new WebSocketServer({ noServer: true });
+
+server.on('upgrade', (req, socket, head) => {
+    if (req.url === '/api/gemini-live-proxy') {
+        wss.handleUpgrade(req, socket, head, (browserWs) => {
+            wss.emit('connection', browserWs, req);
+        });
+    } else {
+        socket.destroy();
+    }
+});
+
+wss.on('connection', (browserWs) => {
+    const apiKey = process.env.GEMINI_API_KEY;
+    const isVertexAI = apiKey && !apiKey.startsWith('AIza') && VERTEX_PROJECT;
+
+    let upstreamUrl;
+    let upstreamHeaders = {};
+
+    if (isVertexAI) {
+        upstreamUrl = `wss://${VERTEX_LOCATION}-aiplatform.googleapis.com/ws/google.cloud.aiplatform.v1beta1.LlmUtilityService.BidiGenerateContent`;
+        upstreamHeaders['Authorization'] = `Bearer ${apiKey}`;
+        upstreamHeaders['x-goog-user-project'] = VERTEX_PROJECT;
+        console.log(`[GeminiProxy] Connecting to Vertex AI (${VERTEX_LOCATION}, project: ${VERTEX_PROJECT})`);
+    } else {
+        upstreamUrl = `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=${apiKey}`;
+        console.log('[GeminiProxy] Connecting to Google AI Studio');
+    }
+
+    const upstream = new WS(upstreamUrl, { headers: upstreamHeaders });
+    upstream.binaryType = 'arraybuffer';
+
+    upstream.on('open', () => console.log('[GeminiProxy] Upstream connected'));
+
+    upstream.on('message', (data) => {
+        if (browserWs.readyState === WS.OPEN) browserWs.send(data);
+    });
+
+    upstream.on('close', (code, reason) => {
+        console.log(`[GeminiProxy] Upstream closed: ${code}`);
+        if (browserWs.readyState === WS.OPEN) browserWs.close(code, reason);
+    });
+
+    upstream.on('error', (err) => {
+        console.error('[GeminiProxy] Upstream error:', err.message);
+        if (browserWs.readyState === WS.OPEN) browserWs.close(1011, 'Upstream error');
+    });
+
+    browserWs.on('message', (data) => {
+        if (upstream.readyState === WS.OPEN) upstream.send(data);
+    });
+
+    browserWs.on('close', () => {
+        if (upstream.readyState === WS.OPEN) upstream.close();
+    });
+});
+
+// Start Server (use http.Server so WebSocket upgrades work)
+server.listen(PORT, () => {
     console.log(`🚀 Voice Agent & Analytics Server running on http://localhost:${PORT}`);
 });

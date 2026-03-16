@@ -842,9 +842,10 @@
                 voiceProviderConfig = await res.json();
                 const providerName = voiceProviderConfig.VOICE_PROVIDER || 'deepgram';
 
+                const bust = voiceProviderConfig._v || Date.now();
                 const module = providerName === 'gemini'
-                    ? await import('/voice-providers/gemini-adapter.js')
-                    : await import('/voice-providers/deepgram-adapter.js');
+                    ? await import(`/voice-providers/gemini-adapter.js?v=${bust}`)
+                    : await import(`/voice-providers/deepgram-adapter.js?v=${bust}`);
 
                 voiceProvider = new module.default(voiceProviderConfig);
                 console.log(`Voice provider loaded: ${providerName}`);
@@ -1070,45 +1071,46 @@ When the child brings up something that warrants switching agents, NEVER do so a
                 }
             }
 
-            // Inject long-term memory at the top
+            // Inject long-term memory as background context (preferences/style only, NOT topic directives)
             if (longTermMemory) {
-                injectedPrompt = `SYSTEM NOTE - LONG TERM USER MEMORY:\n${longTermMemory}\n\n${injectedPrompt}`;
+                injectedPrompt = `BACKGROUND NOTES ABOUT THIS CHILD (use to inform your style and empathy — do NOT use to decide what topic to start with):\n${longTermMemory}\n\n${injectedPrompt}`;
             }
 
             // On handoff: append a HANDOFF CONTEXT block so the LLM picks up the thread naturally
-            // This applies to ALL agents: knowledge (Knowledge Explorer), brainstorm (Brainstorming Coach), and router (Initial Chat)
             if (isHotSwap && historyMessages && historyMessages.length > 0) {
-                const lastUserMsg = [...historyMessages].reverse().find(m => m.role === 'user');
-                const lastAssistantMsg = [...historyMessages].reverse().find(m => m.role === 'assistant');
-
-                // Build a brief conversation recap from recent messages
-                const recentMsgs = historyMessages.slice(-6); // Last 6 messages for context
+                // Filter out meta-messages like summary headers
+                const realMsgs = historyMessages.filter(m =>
+                    m.content && !m.content.startsWith('[Previous conversation summary:')
+                );
+                const recentMsgs = realMsgs.slice(-8);
                 const conversationRecap = recentMsgs
                     .map(m => `${m.role === 'user' ? 'CHILD' : 'PREVIOUS AGENT'}: ${m.content}`)
                     .join('\n');
 
+                // Find the summary block if present (for broader context)
+                const summaryMsg = historyMessages.find(m => m.content && m.content.startsWith('[Previous conversation summary:'));
+                const summaryLine = summaryMsg
+                    ? `\nCONVERSATION SUMMARY: ${summaryMsg.content.replace('[Previous conversation summary: ', '').replace(']', '')}`
+                    : '';
+
                 injectedPrompt += `
 
-HANDOFF CONTEXT (CRITICAL - READ THIS BEFORE SPEAKING):
-You are being handed this conversation mid-session. The child has ALREADY been talking to another agent.
+HANDOFF CONTEXT (READ THIS BEFORE SPEAKING):
+You are joining this conversation mid-session. Another agent was just speaking with the child.
+${summaryLine}
 
 RECENT CONVERSATION:
 ${conversationRecap}
 
-YOUR FIRST RESPONSE MUST:
-1. Introduce yourself by name in ONE warm sentence: e.g. "Hi! I'm ${profile.name}!"
-2. Reference the specific topic from the previous agent's last message: "${lastAssistantMsg ? lastAssistantMsg.content.substring(0, 150) : 'unknown'}"
-3. IMMEDIATELY continue teaching MORE about that exact topic — share a new fact, expand on it, or ask an engaging follow-up question
-
-WHAT NOT TO DO:
-- Do NOT ask "what do you want to learn about?" — they already said!
-- Do NOT repeat what the previous agent already shared
-- Do NOT just acknowledge and then wait — KEEP TEACHING
-- Do NOT give a generic greeting — be specific to the topic
+YOUR ROLE NOW:
+- Greet the child warmly by introducing yourself by name (one short sentence)
+- Pick up naturally from the RECENT CONVERSATION above — base your opening on what was JUST discussed
+- Do NOT reference topics from background notes or previous sessions — focus on the current conversation only
+- Do NOT ask generic questions like "what do you want to talk about?" — the context is right there
+- Do NOT repeat what the previous agent already said
 ${kidPreferences && kidPreferences.allowed && kidPreferences.allowed.length > 0
-    ? `\nTOPIC SUGGESTION POOL (use these when offering the child choices): ${kidPreferences.allowed.slice(0, 6).join(', ')}`
-    : ''}
-The child said "${lastUserMsg ? lastUserMsg.content : 'tell me more'}" which means they want you to CONTINUE explaining the topic, not start over.`;
+    ? `\nAPPROVED TOPICS (only suggest from this list if redirecting): ${kidPreferences.allowed.slice(0, 6).join(', ')}`
+    : ''}`;
             }
 
             let voiceModel = "aura-asteria-en"; // Warm, sweet voice for Router (Asteria)
@@ -1141,8 +1143,6 @@ The child said "${lastUserMsg ? lastUserMsg.content : 'tell me more'}" which mea
                     messages: historyMessages
                 };
             }
-
-            console.log("SENDING SETTINGS PAYLOAD:", JSON.stringify(payload, null, 2));
 
             return payload;
         }
@@ -1229,6 +1229,14 @@ The child said "${lastUserMsg ? lastUserMsg.content : 'tell me more'}" which mea
                     // Fresh session — reset greeting guard so the fact plays on first connect
                     greetingDelivered = false;
 
+                    // Pre-fetch the greeting fact NOW (parallel with WebSocket setup)
+                    // so generate_greeting function call can be answered instantly
+                    window.prefetchedGreeting = fetch('/api/greeting', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ userId: currentUserId })
+                    }).then(r => r.json()).then(d => d.greeting).catch(() => null);
+
                     // Generate a unique analytics session ID whenever we connect fresh
                     currentSessionId = "SESSION_" + Date.now() + "_" + Math.floor(Math.random() * 1000);
 
@@ -1285,9 +1293,10 @@ The child said "${lastUserMsg ? lastUserMsg.content : 'tell me more'}" which mea
                 // (reusing the same instance across connects causes duplicate events — every on() adds another handler).
                 {
                     const providerName = voiceProviderConfig.VOICE_PROVIDER || 'deepgram';
+                    const bust = voiceProviderConfig._v || Date.now();
                     const module = providerName === 'gemini'
-                        ? await import('/voice-providers/gemini-adapter.js')
-                        : await import('/voice-providers/deepgram-adapter.js');
+                        ? await import(`/voice-providers/gemini-adapter.js?v=${bust}`)
+                        : await import(`/voice-providers/deepgram-adapter.js?v=${bust}`);
                     voiceProvider = new module.default(voiceProviderConfig);
                 }
 
@@ -1342,19 +1351,17 @@ The child said "${lastUserMsg ? lastUserMsg.content : 'tell me more'}" which mea
                         else if (profileId === 'brainstorm') greetingMessage = "Hey! I'm here to help you think things through. Want to tell me what's on your mind?";
                     }
 
-                    // Trigger agent to speak with tiny delay so backend has processed settings
-                    setTimeout(() => {
-                        if (voiceProvider && voiceProvider.isConnected()) {
-                            if (isHotSwap) {
-                                voiceProvider.injectUserMessage("[Continue the conversation from the handoff context]");
-                                console.log(`[Handoff] Triggered LLM to generate context-aware response for ${profileId}`);
-                            } else if (profileId === 'router') {
-                                voiceProvider.injectUserMessage("Hello!");
-                            } else if (greetingMessage) {
-                                voiceProvider.injectAgentMessage(greetingMessage);
-                            }
+                    // Trigger agent to speak — no delay needed for hot-swap (Gemini is ready immediately)
+                    if (voiceProvider && voiceProvider.isConnected()) {
+                        if (isHotSwap) {
+                            voiceProvider.injectUserMessage("[Continue the conversation from the handoff context]");
+                            console.log(`[Handoff] Triggered LLM to generate context-aware response for ${profileId}`);
+                        } else if (profileId === 'router') {
+                            voiceProvider.injectUserMessage("Hello!");
+                        } else if (greetingMessage) {
+                            voiceProvider.injectAgentMessage(greetingMessage);
                         }
-                    }, 250);
+                    }
                 });
 
                 voiceProvider.on('user-speaking', () => {
@@ -1398,7 +1405,7 @@ The child said "${lastUserMsg ? lastUserMsg.content : 'tell me more'}" which mea
                         const remaining = audioContext
                             ? Math.max(0, nextPlayTime - audioContext.currentTime)
                             : 0;
-                        const waitMs = Math.round(remaining * 1000) + 250;
+                        const waitMs = Math.round(remaining * 1000) + 50;
                         console.log(`[Handoff] Audio draining — waiting ${waitMs}ms before hot-swap.`);
                         setTimeout(() => handleAgentHandoff(target), waitMs);
                         return;
@@ -1476,18 +1483,24 @@ The child said "${lastUserMsg ? lastUserMsg.content : 'tell me more'}" which mea
                             );
                         } else {
                             try {
-                                let userId = currentUserId;
-                                try { userId = JSON.parse(funcData.arguments).user_id || currentUserId; } catch (_) { }
+                                // Use the pre-fetched greeting if available (already in flight since connect())
+                                // Fall back to a fresh fetch if somehow not pre-fetched
+                                let greeting = window.prefetchedGreeting ? await window.prefetchedGreeting : null;
+                                window.prefetchedGreeting = null;
 
-                                const greetRes = await fetch('/api/greeting', {
-                                    method: 'POST',
-                                    headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify({ userId })
-                                });
-                                const { greeting } = await greetRes.json();
+                                if (!greeting) {
+                                    let userId = currentUserId;
+                                    try { userId = JSON.parse(funcData.arguments).user_id || currentUserId; } catch (_) { }
+                                    const greetRes = await fetch('/api/greeting', {
+                                        method: 'POST',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({ userId })
+                                    });
+                                    greeting = (await greetRes.json()).greeting;
+                                }
+
                                 greetingDelivered = true;
                                 voiceProvider.sendFunctionResponse(funcData.id, funcData.name, greeting);
-                                console.log(`[Greeting] Delivered fact to router: "${greeting}"`);
                             } catch (err) {
                                 console.error('[Greeting] Failed, sending fallback.', err);
                                 greetingDelivered = true;
@@ -1522,6 +1535,13 @@ The child said "${lastUserMsg ? lastUserMsg.content : 'tell me more'}" which mea
                         );
                         window.pendingHandoff = funcData.name;
 
+                        // Preload slow async ops NOW (in parallel with audio draining)
+                        // so handleAgentHandoff can use pre-fetched data instead of waiting.
+                        window.handoffPreload = Promise.all([
+                            summarizeConversationForHandoff(),
+                            fetchLongTermMemory(currentUserId)
+                        ]);
+
                         // Fallback if the agent stays silent
                         setTimeout(() => {
                             if (window.pendingHandoff === funcData.name) {
@@ -1529,7 +1549,7 @@ The child said "${lastUserMsg ? lastUserMsg.content : 'tell me more'}" which mea
                                 window.pendingHandoff = null;
                                 handleAgentHandoff(funcData.name);
                             }
-                        }, 3000); // 3s fallback — agent should go silent quickly since we told it not to speak
+                        }, 3000);
                     }
                 });
 
@@ -1600,7 +1620,19 @@ The child said "${lastUserMsg ? lastUserMsg.content : 'tell me more'}" which mea
 
             } catch (err) {
                 console.error("Connection failed:", err);
-                alert("Please allow microphone access to use the Agent.");
+                // Reset button to allow retry
+                isConnected = false;
+                btnText.textContent = "Talk to Agent";
+                toggleBtn.classList.remove('btn-disconnect');
+                micIcon.setAttribute("data-lucide", "mic");
+                lucide.createIcons();
+                updateOrbState('sleeping');
+                const msg = err && err.message ? err.message : String(err);
+                if (msg.toLowerCase().includes('mic') || msg.toLowerCase().includes('permission') || msg.toLowerCase().includes('notallowed')) {
+                    alert("Please allow microphone access to use the Agent.");
+                } else {
+                    alert("Connection failed: " + msg);
+                }
             }
         }
 
@@ -1738,8 +1770,7 @@ The child said "${lastUserMsg ? lastUserMsg.content : 'tell me more'}" which mea
             let historyToPass = getHistoryForHandoff();
             console.log(`[Handoff] Passing ${historyToPass.length} messages to new agent as context.`);
 
-            // Log the agent transition into the shared session transcript so the full
-            // conversation (all agents) is visible as one continuous record in the dashboard.
+            // Log the agent transition (fire-and-forget)
             const outgoingAgent = AGENT_PROFILES[currentProfileId]?.name || currentProfileId || 'previous agent';
             const incomingAgent = AGENT_PROFILES[targetProfile]?.name || targetProfile;
             if (currentSessionId) {
@@ -1755,29 +1786,34 @@ The child said "${lastUserMsg ? lastUserMsg.content : 'tell me more'}" which mea
                 }).catch(() => {});
             }
 
-            // Get a summarized version of the conversation for handoff context (does NOT save to DB)
-            const summary = await summarizeConversationForHandoff();
+            // Use preloaded summary + memory (kicked off in parallel when routing fn fired).
+            // This avoids sequential awaits here — the slow work already ran during audio drain.
+            let summary = null;
+            let freshMemory = currentLongTermMemory;
+            if (window.handoffPreload) {
+                try {
+                    [summary, freshMemory] = await window.handoffPreload;
+                } catch (e) {
+                    console.warn('[Handoff] Preload failed, using cached data:', e);
+                }
+                window.handoffPreload = null;
+            }
+            currentLongTermMemory = freshMemory || currentLongTermMemory;
 
             // NOTE: We intentionally keep the SAME currentSessionId across handoffs.
-            // The entire sitting (all agents) is one session in the dashboard.
-            // Analytics summarization happens once at disconnect() — not here.
 
-            // Reset engagement state for the incoming agent (new context = fresh slate)
+            // Reset engagement state for the incoming agent
             clearTimeout(silenceTimer);
             silenceTimer = null;
             lastAgentText = '';
             consecutiveNudges = 0;
             nudgeWaitingForResponse = false;
 
-            // Refresh long-term memory from DB so the new agent gets the latest facts
-            currentLongTermMemory = await fetchLongTermMemory(currentUserId);
-            console.log(`[Memory] Refreshed ${currentLongTermMemory.split(' ').filter(Boolean).length} facts for incoming agent`);
-
             // Store summary in history context if available (prepend as system-like context)
             if (summary) {
                 historyToPass = [
                     { type: "History", role: 'assistant', content: `[Previous conversation summary: ${summary}]` },
-                    ...historyToPass.slice(-5) // Keep last 5 messages + summary for recency
+                    ...historyToPass.slice(-5)
                 ];
             }
 
