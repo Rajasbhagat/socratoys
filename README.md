@@ -2,6 +2,8 @@
 
 Socratoys is a voice-driven, multi-agent educational platform designed for children aged 5-10. It combines state-of-the-art voice technology with advanced LLM reasoning to create a companion that nurtures curiosity, teaches new concepts, and provides a safe space for brainstorming and emotional processing.
 
+Created by [Rajas Bhagat](https://www.rajasb.com).
+
 ---
 
 ## 🌟 Core Features
